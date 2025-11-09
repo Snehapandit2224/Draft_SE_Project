@@ -10,6 +10,9 @@ def create_app(config_name):
 
     db.init_app(app)
 
+    from .main import main as main_blueprint
+    app.register_blueprint(main_blueprint)
+
     from .employees import employees as employees_blueprint
     app.register_blueprint(employees_blueprint, url_prefix='/employees')
 

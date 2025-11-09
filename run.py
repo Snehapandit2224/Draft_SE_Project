@@ -10,7 +10,3 @@ migrate = Migrate(app, db)
 def make_shell_context():
     return dict(db=db, Employee=Employee, EmployeeHistory=EmployeeHistory,
                 ExitFeedback=ExitFeedback, AttritionPrediction=AttritionPrediction)
-
-@app.route('/health')
-def health_check():
-    return 'OK'

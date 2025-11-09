@@ -20,7 +20,7 @@ if config.config_file_name is not None:
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
 from app import create_app, db
-app = create_app('development')
+app = create_app('testing')
 with app.app_context():
     target_metadata = db.metadata
 
@@ -61,15 +61,16 @@ def run_migrations_online() -> None:
     and associate a connection with the context.
 
     """
-    connectable = current_app.extensions['sqlalchemy'].engine
+    with app.app_context():
+        connectable = db.get_engine()
 
-    with connectable.connect() as connection:
-        context.configure(
-            connection=connection, target_metadata=target_metadata
-        )
+        with connectable.connect() as connection:
+            context.configure(
+                connection=connection, target_metadata=target_metadata
+            )
 
-        with context.begin_transaction():
-            context.run_migrations()
+            with context.begin_transaction():
+                context.run_migrations()
 
 
 if context.is_offline_mode():
