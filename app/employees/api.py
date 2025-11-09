@@ -1,7 +1,7 @@
 from flask import request, jsonify
 from . import employees
 from .. import db
-from ..models import Employee
+from ..models import Employee, EmployeeHistory
 from datetime import datetime
 
 @employees.route('/api/employees', methods=['POST'])
@@ -39,7 +39,16 @@ def update_employee(id):
     if not data:
         return jsonify({'error': 'No input data provided'}), 400
 
-    for field in ['first_name', 'last_name', 'email', 'department', 'position', 'is_active']:
+    if 'status' in data and data['status'] != employee.status:
+        history = EmployeeHistory(
+            employee_id=employee.id,
+            old_status=employee.status,
+            new_status=data['status'],
+            changed_by='system'  # In a real app, this would be the logged-in user
+        )
+        db.session.add(history)
+
+    for field in ['first_name', 'last_name', 'email', 'department', 'position', 'is_active', 'status']:
         if field in data:
             setattr(employee, field, data[field])
     
@@ -53,8 +62,15 @@ def update_employee(id):
     db.session.commit()
     return jsonify(employee.to_dict())
 
+@employees.route('/api/employees/<int:id>/history', methods=['GET'])
+def get_employee_history(id):
+    employee = Employee.query.get_or_404(id)
+    history = EmployeeHistory.query.filter_by(employee_id=id).all()
+    return jsonify([h.to_dict() for h in history])
+
 # Helper to convert Employee object to dictionary
 def to_dict(self):
     return {c.name: getattr(self, c.name) for c in self.__table__.columns}
 
 Employee.to_dict = to_dict
+EmployeeHistory.to_dict = to_dict

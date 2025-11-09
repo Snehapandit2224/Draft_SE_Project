@@ -1,4 +1,7 @@
 from . import db
+from sqlalchemy import event
+from datetime import datetime
+from sqlalchemy.orm.attributes import get_history
 
 class Employee(db.Model):
     __tablename__ = 'employees'
@@ -10,13 +13,16 @@ class Employee(db.Model):
     position = db.Column(db.String(64))
     hire_date = db.Column(db.Date)
     is_active = db.Column(db.Boolean, default=True)
+    status = db.Column(db.String(64), default='active')
 
 class EmployeeHistory(db.Model):
     __tablename__ = 'employee_history'
     id = db.Column(db.Integer, primary_key=True)
     employee_id = db.Column(db.Integer, db.ForeignKey('employees.id'))
-    event = db.Column(db.String(255))
-    event_date = db.Column(db.DateTime)
+    old_status = db.Column(db.String(64))
+    new_status = db.Column(db.String(64))
+    changed_by = db.Column(db.String(64))
+    changed_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class ExitFeedback(db.Model):
     __tablename__ = 'exit_feedback'

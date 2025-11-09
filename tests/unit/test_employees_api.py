@@ -5,7 +5,7 @@ import os
 from datetime import date
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 from app import create_app, db
-from app.models import Employee
+from app.models import Employee, EmployeeHistory
 
 class TestEmployeeApi(unittest.TestCase):
     def setUp(self):
@@ -55,3 +55,20 @@ class TestEmployeeApi(unittest.TestCase):
                                     content_type='application/json')
         self.assertEqual(response.status_code, 200)
         self.assertIn('Senior Software Engineer', str(response.data))
+
+    def test_update_employee_status_creates_history(self):
+        e = Employee(first_name='John', last_name='Doe', email='john.doe@example.com',
+                     department='Engineering', position='Software Engineer', hire_date=date(2023, 1, 15))
+        db.session.add(e)
+        db.session.commit()
+
+        update_data = {'status': 'on-leave'}
+        response = self.client.put(f'/employees/api/employees/{e.id}',
+                                    data=json.dumps(update_data),
+                                    content_type='application/json')
+        self.assertEqual(response.status_code, 200)
+
+        history = EmployeeHistory.query.filter_by(employee_id=e.id).first()
+        self.assertIsNotNone(history)
+        self.assertEqual(history.old_status, 'active')
+        self.assertEqual(history.new_status, 'on-leave')
