@@ -27,4 +27,7 @@ def create_app(config_name):
     from .ml_models import ml_models as ml_models_blueprint
     app.register_blueprint(ml_models_blueprint, url_prefix='/ml')
 
+    from .alerts import alerts as alerts_blueprint
+    app.register_blueprint(alerts_blueprint, url_prefix='/alerts')
+
     return app

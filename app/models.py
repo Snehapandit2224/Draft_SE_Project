@@ -92,3 +92,20 @@ class AttritionPrediction(db.Model):
             'attrition_probability': self.attrition_probability,
             'shap_values': self.shap_values
         }
+
+class AttritionAlert(db.Model):
+    __tablename__ = 'attrition_alerts'
+    id = db.Column(db.Integer, primary_key=True)
+    alert_type = db.Column(db.String(64))
+    group_name = db.Column(db.String(64))
+    value = db.Column(db.Float)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'alert_type': self.alert_type,
+            'group_name': self.group_name,
+            'value': self.value,
+            'created_at': self.created_at.isoformat() if self.created_at else None
+        }
