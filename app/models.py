@@ -39,6 +39,8 @@ class ExitFeedback(db.Model):
     exit_date = db.Column(db.Date)
     reason = db.Column(db.Enum(ExitReason))
     feedback = db.Column(db.Text)
+    interview_completed = db.Column(db.Boolean, default=False)
+    interview_date = db.Column(db.DateTime)
 
     def to_dict(self):
         return {
@@ -46,7 +48,9 @@ class ExitFeedback(db.Model):
             'employee_id': self.employee_id,
             'exit_date': self.exit_date.isoformat() if self.exit_date else None,
             'reason': self.reason.value if self.reason else None,
-            'feedback': self.feedback
+            'feedback': self.feedback,
+            'interview_completed': self.interview_completed,
+            'interview_date': self.interview_date.isoformat() if self.interview_date else None
         }
 
 class AttritionPrediction(db.Model):

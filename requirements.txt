@@ -6,3 +6,4 @@ scikit-learn==1.2.0
 shap==0.41.0
 matplotlib==3.6.2
 mysql-connector-python==8.0.31
+python-dotenv==0.21.0

@@ -76,3 +76,39 @@ class TestExitManagementApi(unittest.TestCase):
                                      content_type='application/json')
         self.assertEqual(response.status_code, 404)
         self.assertIn('Employee not found', str(response.data))
+
+    def test_complete_exit_interview(self):
+        e = Employee(first_name='John', last_name='Doe', email='john.doe@example.com',
+                     department='Engineering', position='Software Engineer', hire_date=date(2023, 1, 15))
+        db.session.add(e)
+        db.session.commit()
+        feedback = ExitFeedback(employee_id=e.id, exit_date=date(2024, 1, 15), reason='resignation', feedback='...',)
+        db.session.add(feedback)
+        db.session.commit()
+
+        response = self.client.patch(f'/exit/api/exit-feedback/{feedback.id}/complete')
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.data)
+        self.assertTrue(data['interview_completed'])
+        self.assertIsNotNone(data['interview_date'])
+
+    def test_get_pending_exit_interviews(self):
+        e1 = Employee(first_name='John', last_name='Doe', email='john.doe@example.com',
+                      department='Engineering', position='Software Engineer', hire_date=date(2023, 1, 15))
+        e2 = Employee(first_name='Jane', last_name='Doe', email='jane.doe@example.com',
+                      department='Marketing', position='Marketing Manager', hire_date=date(2022, 11, 20))
+        db.session.add_all([e1, e2])
+        db.session.commit()
+
+        feedback1 = ExitFeedback(employee_id=e1.id, exit_date=date(2024, 1, 15), reason='resignation',
+                                 feedback='...', interview_completed=True, interview_date=date(2024, 1, 20))
+        feedback2 = ExitFeedback(employee_id=e2.id, exit_date=date(2024, 1, 16), reason='termination',
+                                 feedback='...')
+        db.session.add_all([feedback1, feedback2])
+        db.session.commit()
+
+        response = self.client.get('/exit/api/exit-feedback/pending')
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.data)
+        self.assertEqual(len(data), 1)
+        self.assertEqual(data[0]['id'], feedback2.id)
