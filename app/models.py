@@ -2,6 +2,7 @@ from . import db
 from sqlalchemy import event
 from datetime import datetime
 from sqlalchemy.orm.attributes import get_history
+import enum
 
 class Employee(db.Model):
     __tablename__ = 'employees'
@@ -24,13 +25,29 @@ class EmployeeHistory(db.Model):
     changed_by = db.Column(db.String(64))
     changed_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+import enum
+
+class ExitReason(enum.Enum):
+    resignation = 'resignation'
+    termination = 'termination'
+    retirement = 'retirement'
+
 class ExitFeedback(db.Model):
     __tablename__ = 'exit_feedback'
     id = db.Column(db.Integer, primary_key=True)
     employee_id = db.Column(db.Integer, db.ForeignKey('employees.id'))
     exit_date = db.Column(db.Date)
-    reason = db.Column(db.Text)
+    reason = db.Column(db.Enum(ExitReason))
     feedback = db.Column(db.Text)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'employee_id': self.employee_id,
+            'exit_date': self.exit_date.isoformat() if self.exit_date else None,
+            'reason': self.reason.value if self.reason else None,
+            'feedback': self.feedback
+        }
 
 class AttritionPrediction(db.Model):
     __tablename__ = 'attrition_predictions'
