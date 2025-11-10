@@ -12,6 +12,7 @@
 | `position` | String(64) | |
 | `hire_date` | Date | |
 | `is_active` | Boolean | Default: True |
+| `status` | String(64) | Default: 'active' |
 
 ## `employee_history`
 
@@ -19,8 +20,10 @@
 |---|---|---|
 | `id` | Integer | Primary Key |
 | `employee_id` | Integer | Foreign Key (`employees.id`) |
-| `event` | String(255) | |
-| `event_date` | DateTime | |
+| `old_status` | String(64) | |
+| `new_status` | String(64) | |
+| `changed_by` | String(64) | |
+| `changed_at` | DateTime | |
 
 ## `exit_feedback`
 

@@ -16,6 +16,7 @@ This project is a Flask-based web application for analyzing employee attrition.
 |-- app/
 |   |-- __init__.py
 |   |-- models.py
+|   |-- main.py
 |   |-- analytics/
 |   |-- employees/
 |   |-- exit_management/
@@ -34,6 +35,12 @@ This project is a Flask-based web application for analyzing employee attrition.
 |-- GEMINI.md
 ```
 
+## API Endpoints
+
+*   `POST /api/employees`: Create a new employee.
+*   `PUT /api/employees/<id>`: Update an existing employee.
+*   `GET /api/employees/<id>/history`: Get the status history of an employee.
+
 ## Key Jira Story Mappings
 
 *   **HR-1:** Set up project structure
@@ -41,6 +48,7 @@ This project is a Flask-based web application for analyzing employee attrition.
 *   **HR-3:** Develop exit feedback functionality
 *   **HR-4:** Create analytics dashboard
 *   **HR-5:** Integrate machine learning model for attrition prediction
+*   **HR-6:** Implement employee history tracking
 
 ## Prompt Usage Guidelines
 

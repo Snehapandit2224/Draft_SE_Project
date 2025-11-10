@@ -32,9 +32,13 @@ def create_employee():
     db.session.commit()
     return jsonify(employee.to_dict()), 201
 
-@employees.route('/api/employees/<int:id>', methods=['PUT'])
-def update_employee(id):
+@employees.route('/api/employees/<int:id>', methods=['GET', 'PUT'])
+def employee_detail(id):
     employee = Employee.query.get_or_404(id)
+    if request.method == 'GET':
+        return jsonify(employee.to_dict())
+    
+    # PUT request
     data = request.get_json()
     if not data:
         return jsonify({'error': 'No input data provided'}), 400
@@ -62,6 +66,34 @@ def update_employee(id):
     db.session.commit()
     return jsonify(employee.to_dict())
 
+@employees.route('/api/employees', methods=['GET'])
+def get_employees():
+    query = Employee.query
+
+    # Filtering
+    if 'department' in request.args:
+        query = query.filter(Employee.department == request.args['department'])
+    if 'position' in request.args:
+        query = query.filter(Employee.position == request.args['position'])
+    if 'status' in request.args:
+        query = query.filter(Employee.status == request.args['status'])
+
+    # Pagination
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 10, type=int)
+    paginated_employees = query.paginate(page=page, per_page=per_page, error_out=False)
+    
+    employees_list = [e.to_dict() for e in paginated_employees.items]
+    
+    return jsonify({
+        'employees': employees_list,
+        'total': paginated_employees.total,
+        'pages': paginated_employees.pages,
+        'current_page': paginated_employees.page
+    })
+
+
+
 @employees.route('/api/employees/<int:id>/history', methods=['GET'])
 def get_employee_history(id):
     employee = Employee.query.get_or_404(id)
@@ -70,7 +102,15 @@ def get_employee_history(id):
 
 # Helper to convert Employee object to dictionary
 def to_dict(self):
-    return {c.name: getattr(self, c.name) for c in self.__table__.columns}
+    # A more robust to_dict that handles dates
+    data = {}
+    for c in self.__table__.columns:
+        value = getattr(self, c.name)
+        if isinstance(value, datetime):
+            data[c.name] = value.isoformat()
+        else:
+            data[c.name] = value
+    return data
 
 Employee.to_dict = to_dict
 EmployeeHistory.to_dict = to_dict

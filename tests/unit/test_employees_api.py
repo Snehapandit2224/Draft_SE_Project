@@ -72,3 +72,56 @@ class TestEmployeeApi(unittest.TestCase):
         self.assertIsNotNone(history)
         self.assertEqual(history.old_status, 'active')
         self.assertEqual(history.new_status, 'on-leave')
+
+    def test_get_employee(self):
+        e = Employee(first_name='Jane', last_name='Doe', email='jane.doe@example.com',
+                     department='Marketing', position='Marketing Manager', hire_date=date(2022, 11, 20))
+        db.session.add(e)
+        db.session.commit()
+
+        response = self.client.get(f'/employees/api/employees/{e.id}')
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('Jane', str(response.data))
+
+    def test_get_employees(self):
+        e1 = Employee(first_name='Jane', last_name='Doe', email='jane.doe@example.com',
+                      department='Marketing', position='Marketing Manager', hire_date=date(2022, 11, 20))
+        e2 = Employee(first_name='John', last_name='Smith', email='john.smith@example.com',
+                      department='Engineering', position='Software Engineer', hire_date=date(2023, 1, 15))
+        db.session.add_all([e1, e2])
+        db.session.commit()
+
+        response = self.client.get('/employees/api/employees')
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.data)
+        self.assertEqual(data['total'], 2)
+        self.assertEqual(len(data['employees']), 2)
+
+    def test_get_employees_with_filters(self):
+        e1 = Employee(first_name='Jane', last_name='Doe', email='jane.doe@example.com',
+                      department='Marketing', position='Marketing Manager', hire_date=date(2022, 11, 20))
+        e2 = Employee(first_name='John', last_name='Smith', email='john.smith@example.com',
+                      department='Engineering', position='Software Engineer', hire_date=date(2023, 1, 15))
+        db.session.add_all([e1, e2])
+        db.session.commit()
+
+        response = self.client.get('/employees/api/employees?department=Marketing')
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.data)
+        self.assertEqual(data['total'], 1)
+        self.assertEqual(data['employees'][0]['first_name'], 'Jane')
+
+    def test_get_employees_pagination(self):
+        for i in range(15):
+            e = Employee(first_name=f'First{i}', last_name=f'Last{i}', email=f'test{i}@example.com',
+                         department='Engineering', position='Software Engineer', hire_date=date(2023, 1, 15))
+            db.session.add(e)
+        db.session.commit()
+
+        response = self.client.get('/employees/api/employees?page=2&per_page=5')
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.data)
+        self.assertEqual(data['total'], 15)
+        self.assertEqual(len(data['employees']), 5)
+        self.assertEqual(data['current_page'], 2)
+        self.assertEqual(data['pages'], 3)
