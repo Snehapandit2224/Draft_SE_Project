@@ -20,7 +20,7 @@ if config.config_file_name is not None:
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
 from app import create_app, db
-app = create_app('testing')
+app = create_app('development')
 with app.app_context():
     target_metadata = db.metadata
 
