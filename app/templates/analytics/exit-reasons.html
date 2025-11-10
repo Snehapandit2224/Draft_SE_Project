@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block title %}Exit Reasons Report{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>Exit Reasons Report</h1>
+    <div class="row">
+        <div class="col-md-8">
+            <canvas id="exitReasonsChart"></canvas>
+        </div>
+        <div class="col-md-4">
+            <h3>Filters</h3>
+            <form id="filterForm">
+                <div class="mb-3">
+                    <label for="start_date" class="form-label">Start Date</label>
+                    <input type="date" class="form-control" id="start_date" name="start_date">
+                </div>
+                <div class="mb-3">
+                    <label for="end_date" class="form-label">End Date</label>
+                    <input type="date" class="form-control" id="end_date" name="end_date">
+                </div>
+                <div class="mb-3">
+                    <label for="department" class="form-label">Department</label>
+                    <input type="text" class="form-control" id="department" name="department">
+                </div>
+                <button type="submit" class="btn btn-primary">Apply</button>
+            </form>
+            <hr>
+            <a href="#" id="downloadCsv" class="btn btn-secondary">Download CSV</a>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const ctx = document.getElementById('exitReasonsChart').getContext('2d');
+        let chart;
+
+        function updateChart(data) {
+            const labels = data.map(item => item.reason);
+            const counts = data.map(item => item.count);
+
+            if (chart) {
+                chart.destroy();
+            }
+
+            chart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '# of Exits',
+                        data: counts,
+                        backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        function fetchData(url) {
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    updateChart(data);
+                });
+        }
+
+        const filterForm = document.getElementById('filterForm');
+        filterForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            const formData = new FormData(filterForm);
+            const params = new URLSearchParams(formData);
+            fetchData(`/analytics/api/reports/exit-reasons?${params.toString()}`);
+        });
+
+        const downloadCsv = document.getElementById('downloadCsv');
+        downloadCsv.addEventListener('click', function (e) {
+            e.preventDefault();
+            const formData = new FormData(filterForm);
+            const params = new URLSearchParams(formData);
+            window.location.href = `/analytics/api/reports/exit-reasons/export?${params.toString()}`;
+        });
+
+        fetchData('/analytics/api/reports/exit-reasons');
+    });
+</script>
+{% endblock %}
