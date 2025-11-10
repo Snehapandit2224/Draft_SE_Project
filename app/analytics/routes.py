@@ -12,3 +12,7 @@ def exit_reasons_report():
 @analytics.route('/reports/attrition')
 def attrition_report():
     return render_template('analytics/attrition-report.html')
+
+@analytics.route('/reports/hotspots')
+def hotspots_report():
+    return render_template('analytics/hotspots.html')

@@ -107,3 +107,32 @@ class TestAnalyticsApi(unittest.TestCase):
         self.assertEqual(march_data['active_employees'], 2)
         self.assertEqual(march_data['left_employees'], 1)
         self.assertEqual(march_data['attrition_rate'], 50.0)
+
+    def test_get_attrition_hotspots(self):
+        # Create 10 employees in Engineering
+        for i in range(10):
+            e = Employee(first_name=f'John{i}', last_name='Doe', email=f'john.doe{i}@example.com',
+                         department='Engineering', position='Software Engineer', hire_date=date(2023, 1, 1))
+            db.session.add(e)
+        db.session.commit()
+
+        # Create exits to create a hotspot in Engineering
+        # Month 1: 1 exit (10% attrition)
+        feedback1 = ExitFeedback(employee_id=1, exit_date=date(2023, 2, 15), reason=ExitReason.resignation, feedback='...')
+        # Month 2: 2 exits (20% attrition)
+        feedback2 = ExitFeedback(employee_id=2, exit_date=date(2023, 3, 15), reason=ExitReason.resignation, feedback='...')
+        feedback3 = ExitFeedback(employee_id=3, exit_date=date(2023, 3, 15), reason=ExitReason.resignation, feedback='...')
+        # Month 3: 2 exits (20% attrition)
+        feedback4 = ExitFeedback(employee_id=4, exit_date=date(2023, 4, 15), reason=ExitReason.resignation, feedback='...')
+        feedback5 = ExitFeedback(employee_id=5, exit_date=date(2023, 4, 15), reason=ExitReason.resignation, feedback='...')
+        db.session.add_all([feedback1, feedback2, feedback3, feedback4, feedback5])
+        db.session.commit()
+
+        response = self.client.get('/analytics/api/analytics/hotspots?group_by=department')
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.data)
+
+        # Rolling average for month 3 should be (10+20+20)/3 = 16.67% which is > 15%
+        hotspot = next((item for item in data if item["group"] == "Engineering" and item["period"] == "2023-04"), None)
+        self.assertIsNotNone(hotspot)
+        self.assertAlmostEqual(hotspot['attrition_rate'], 20.26, delta=0.01)

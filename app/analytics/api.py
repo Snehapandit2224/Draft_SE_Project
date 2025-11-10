@@ -93,13 +93,8 @@ import io
 import csv
 import pandas as pd
 
-@analytics.route('/api/reports/attrition', methods=['GET'])
-def get_attrition_report():
-    group_by = request.args.get('group_by', 'month') # month, department, position
-
+def calculate_attrition_rates(group_by='month'):
     # Get all employees and their exit dates
-    employees_query = db.session.query(Employee).statement
-    exits_query = db.session.query(ExitFeedback).statement
     employees_results = db.session.query(Employee).all()
     exits_results = db.session.query(ExitFeedback).all()
     employees = pd.DataFrame([e.to_dict() for e in employees_results])
@@ -164,5 +159,38 @@ def get_attrition_report():
                 'left_employees': num_left,
                 'attrition_rate': attrition_rate
             })
+    return results
 
+@analytics.route('/api/reports/attrition', methods=['GET'])
+def get_attrition_report():
+    group_by = request.args.get('group_by', 'month')
+    results = calculate_attrition_rates(group_by)
     return jsonify(results)
+
+@analytics.route('/api/analytics/hotspots', methods=['GET'])
+def get_attrition_hotspots():
+    group_by = request.args.get('group_by', 'department') # department or position
+    attrition_data = calculate_attrition_rates(group_by)
+    
+    df = pd.DataFrame(attrition_data)
+    df['period'] = pd.to_datetime(df['period'])
+    df = df.set_index(['period', 'group'])['attrition_rate'].unstack()
+
+    # Calculate 3-month rolling average
+    rolling_avg = df.rolling(window=3).mean()
+
+    # Find hotspots
+    hotspots = rolling_avg[rolling_avg > 15]
+    
+    # Format for heatmap
+    heatmap_data = []
+    for group in hotspots.columns:
+        for period, value in hotspots[group].items():
+            if pd.notna(value):
+                heatmap_data.append({
+                    'group': group,
+                    'period': period.strftime('%Y-%m'),
+                    'attrition_rate': value
+                })
+
+    return jsonify(heatmap_data)

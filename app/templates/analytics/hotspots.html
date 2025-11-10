@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block title %}Attrition Hotspots{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>Attrition Hotspots</h1>
+    <div class="row">
+        <div class="col-md-12">
+            <canvas id="hotspotsChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-chart-matrix@1.1.1"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const ctx = document.getElementById('hotspotsChart').getContext('2d');
+        
+        function createHeatmap(data) {
+            const groups = [...new Set(data.map(item => item.group))];
+            const periods = [...new Set(data.map(item => item.period))].sort();
+
+            const chartData = {
+                datasets: [{
+                    label: 'Attrition Rate',
+                    data: data.map(item => ({
+                        x: item.period,
+                        y: item.group,
+                        v: item.attrition_rate
+                    })),
+                    backgroundColor(ctx) {
+                        const value = ctx.dataset.data[ctx.dataIndex].v;
+                        const alpha = (value - 15) / 30; // Scale color based on value
+                        return `rgba(255, 99, 132, ${alpha})`;
+                    },
+                    borderColor: 'grey',
+                    borderWidth: 1,
+                    width: ({chart}) => (chart.chartArea || {}).width / periods.length - 1,
+                    height: ({chart}) => (chart.chartArea || {}).height / groups.length - 1
+                }]
+            };
+
+            new Chart(ctx, {
+                type: 'matrix',
+                data: chartData,
+                options: {
+                    scales: {
+                        x: {
+                            type: 'category',
+                            labels: periods,
+                            ticks: {
+                                autoSkip: false
+                            }
+                        },
+                        y: {
+                            type: 'category',
+                            labels: groups,
+                            offset: true
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                title: function() {
+                                    return '';
+                                },
+                                label: function(context) {
+                                    const v = context.dataset.data[context.dataIndex];
+                                    return [v.y, v.x, `Attrition: ${v.v.toFixed(2)}%`];
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        fetch('/analytics/api/analytics/hotspots')
+            .then(response => response.json())
+            .then(data => {
+                createHeatmap(data);
+            });
+    });
+</script>
+{% endblock %}
