@@ -16,6 +16,19 @@ class Employee(db.Model):
     is_active = db.Column(db.Boolean, default=True)
     status = db.Column(db.String(64), default='active')
 
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'first_name': self.first_name,
+            'last_name': self.last_name,
+            'email': self.email,
+            'department': self.department,
+            'position': self.position,
+            'hire_date': self.hire_date.isoformat() if self.hire_date else None,
+            'is_active': self.is_active,
+            'status': self.status
+        }
+
 class EmployeeHistory(db.Model):
     __tablename__ = 'employee_history'
     id = db.Column(db.Integer, primary_key=True)
@@ -24,6 +37,16 @@ class EmployeeHistory(db.Model):
     new_status = db.Column(db.String(64))
     changed_by = db.Column(db.String(64))
     changed_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'employee_id': self.employee_id,
+            'old_status': self.old_status,
+            'new_status': self.new_status,
+            'changed_by': self.changed_by,
+            'changed_at': self.changed_at.isoformat() if self.changed_at else None
+        }
 
 import enum
 
@@ -60,3 +83,12 @@ class AttritionPrediction(db.Model):
     prediction_date = db.Column(db.DateTime)
     attrition_probability = db.Column(db.Float)
     shap_values = db.Column(db.Text)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'employee_id': self.employee_id,
+            'prediction_date': self.prediction_date.isoformat() if self.prediction_date else None,
+            'attrition_probability': self.attrition_probability,
+            'shap_values': self.shap_values
+        }

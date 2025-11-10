@@ -83,3 +83,27 @@ class TestAnalyticsApi(unittest.TestCase):
         self.assertEqual(response.content_type, 'text/csv')
         self.assertIn(b'Reason,Count,Percentage', response.data)
         self.assertIn(b'resignation,1,100.0', response.data)
+
+    def test_get_attrition_report(self):
+        e1 = Employee(first_name='John', last_name='Doe', email='john.doe@example.com',
+                      department='Engineering', position='Software Engineer', hire_date=date(2023, 1, 15))
+        e2 = Employee(first_name='Jane', last_name='Doe', email='jane.doe@example.com',
+                      department='Engineering', position='Software Engineer', hire_date=date(2023, 1, 15))
+        db.session.add_all([e1, e2])
+        db.session.commit()
+
+        feedback1 = ExitFeedback(employee_id=e1.id, exit_date=date(2023, 3, 15), reason=ExitReason.resignation,
+                                 feedback='...')
+        db.session.add(feedback1)
+        db.session.commit()
+
+        response = self.client.get('/analytics/api/reports/attrition?group_by=month')
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.data)
+        
+        # Find the data for March 2023
+        march_data = next((item for item in data if item["period"] == "2023-03"), None)
+        self.assertIsNotNone(march_data)
+        self.assertEqual(march_data['active_employees'], 2)
+        self.assertEqual(march_data['left_employees'], 1)
+        self.assertEqual(march_data['attrition_rate'], 50.0)

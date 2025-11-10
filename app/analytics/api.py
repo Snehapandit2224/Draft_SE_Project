@@ -82,3 +82,87 @@ def export_exit_reasons_report():
     response.headers["Content-Disposition"] = "attachment; filename=exit_reasons_report.csv"
     response.headers["Content-type"] = "text/csv"
     return response
+
+from flask import jsonify, request, make_response
+from . import analytics
+from .. import db
+from ..models import ExitFeedback, Employee, ExitReason
+from sqlalchemy import func
+from datetime import datetime
+import io
+import csv
+import pandas as pd
+
+@analytics.route('/api/reports/attrition', methods=['GET'])
+def get_attrition_report():
+    group_by = request.args.get('group_by', 'month') # month, department, position
+
+    # Get all employees and their exit dates
+    employees_query = db.session.query(Employee).statement
+    exits_query = db.session.query(ExitFeedback).statement
+    employees_results = db.session.query(Employee).all()
+    exits_results = db.session.query(ExitFeedback).all()
+    employees = pd.DataFrame([e.to_dict() for e in employees_results])
+    exits = pd.DataFrame([e.to_dict() for e in exits_results])
+
+    # Merge the two dataframes
+    df = pd.merge(employees, exits, left_on='id', right_on='employee_id', how='left')
+    
+    # Convert dates to datetime objects
+    df['hire_date'] = pd.to_datetime(df['hire_date'])
+    df['exit_date'] = pd.to_datetime(df['exit_date'])
+
+    # Set the period for the report
+    start_date = df['hire_date'].min()
+    end_date = df['exit_date'].max()
+    if pd.isna(end_date):
+        end_date = datetime.now()
+
+    # Create a date range for the report
+    date_range = pd.date_range(start=start_date, end=end_date, freq='MS')
+
+    results = []
+    for period_start in date_range:
+        period_end = period_start + pd.offsets.MonthEnd(1)
+
+        # Filter employees who were active at the start of the period
+        active_at_start = df[
+            (df['hire_date'] < period_start) &
+            ((df['exit_date'].isnull()) | (df['exit_date'] >= period_start))
+        ]
+        
+        # Filter employees who left during the period
+        left_during_period = df[
+            (df['exit_date'] >= period_start) &
+            (df['exit_date'] <= period_end)
+        ]
+
+        if group_by == 'department':
+            groups = df['department'].unique()
+        elif group_by == 'position':
+            groups = df['position'].unique()
+        else:
+            groups = ['Overall']
+
+        for group in groups:
+            active_in_group = active_at_start
+            left_in_group = left_during_period
+
+            if group != 'Overall':
+                active_in_group = active_at_start[active_at_start[group_by] == group]
+                left_in_group = left_during_period[left_during_period[group_by] == group]
+
+            num_active = len(active_in_group)
+            num_left = len(left_in_group)
+            
+            attrition_rate = (num_left / num_active) * 100 if num_active > 0 else 0
+
+            results.append({
+                'period': period_start.strftime('%Y-%m'),
+                'group': group,
+                'active_employees': num_active,
+                'left_employees': num_left,
+                'attrition_rate': attrition_rate
+            })
+
+    return jsonify(results)

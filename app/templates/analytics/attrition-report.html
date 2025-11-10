@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block title %}Attrition Report{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>Attrition Report</h1>
+    <div class="row mb-3">
+        <div class="col-md-4">
+            <label for="group_by" class="form-label">Group By</label>
+            <select class="form-select" id="group_by">
+                <option value="month">Month</option>
+                <option value="department">Department</option>
+                <option value="position">Position</option>
+            </select>
+        </div>
+    </div>
+    <table class="table table-striped table-bordered">
+        <thead>
+            <tr>
+                <th>Period</th>
+                <th>Group</th>
+                <th>Active Employees</th>
+                <th>Left Employees</th>
+                <th>Attrition Rate</th>
+            </tr>
+        </thead>
+        <tbody id="report-table-body">
+        </tbody>
+    </table>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const groupBySelect = document.getElementById('group_by');
+        const tableBody = document.getElementById('report-table-body');
+
+        function updateTable(data) {
+            tableBody.innerHTML = '';
+            data.forEach(item => {
+                const row = `
+                    <tr>
+                        <td>${item.period}</td>
+                        <td>${item.group}</td>
+                        <td>${item.active_employees}</td>
+                        <td>${item.left_employees}</td>
+                        <td>${item.attrition_rate.toFixed(2)}%</td>
+                    </tr>
+                `;
+                tableBody.innerHTML += row;
+            });
+        }
+
+        function fetchData(groupBy) {
+            fetch(`/analytics/api/reports/attrition?group_by=${groupBy}`)
+                .then(response => response.json())
+                .then(data => {
+                    updateTable(data);
+                });
+        }
+
+        groupBySelect.addEventListener('change', function () {
+            fetchData(this.value);
+        });
+
+        fetchData(groupBySelect.value);
+    });
+</script>
+{% endblock %}
