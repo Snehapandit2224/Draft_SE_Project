@@ -25,6 +25,7 @@ def create_app(config_name):
     app.register_blueprint(analytics_blueprint, url_prefix='/analytics')
 
     from .ml_models import ml_models as ml_models_blueprint
+    from .ml_models import api
     app.register_blueprint(ml_models_blueprint, url_prefix='/ml')
 
     from .alerts import alerts as alerts_blueprint
