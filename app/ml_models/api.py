@@ -6,6 +6,7 @@ from app import db
 from app.models import Employee, AttritionPrediction
 from app.ml_models import ml_models
 from datetime import datetime
+import shap
 
 MODEL_DIR = os.path.join(os.path.dirname(__file__), '..', '..', 'models')
 MODEL_PATH = os.path.join(MODEL_DIR, 'attrition_model.pkl')
@@ -48,11 +49,9 @@ def predict_attrition():
 
     # Preprocess the data
     df_processed = preprocess_data(df.copy())
-    print(f"df_processed: {df_processed}")
 
     # Separate categorical and numerical features
     categorical_features = ['department', 'position', 'status']
-    print(f"categorical_features: {categorical_features}")
     
     # Apply the transformer
     try:
@@ -83,3 +82,56 @@ def predict_attrition():
     db.session.commit()
 
     return jsonify({'message': f'Successfully predicted attrition for {len(employees)} employees.'}), 200
+
+@ml_models.route('/api/ml/risk-factors/<int:emp_id>', methods=['GET'])
+def get_risk_factors(emp_id):
+    if not os.path.exists(MODEL_PATH) or not os.path.exists(TRANSFORMER_PATH):
+        return jsonify({'error': 'Model or transformer not found. Please train the model first.'}), 500
+
+    model = joblib.load(MODEL_PATH)
+    transformer = joblib.load(TRANSFORMER_PATH)
+
+    employee = Employee.query.get(emp_id)
+    if not employee:
+        return jsonify({'error': 'Employee not found.'}), 404
+
+    employee_data = {
+        'id': employee.id,
+        'department': employee.department,
+        'position': employee.position,
+        'hire_date': employee.hire_date,
+        'status': employee.status
+    }
+    df = pd.DataFrame([employee_data])
+    df_processed = preprocess_data(df.copy())
+
+    categorical_features = ['department', 'position', 'status']
+    
+    try:
+        transformed_data = transformer.transform(df_processed[categorical_features])
+    except Exception as e:
+        return jsonify({'error': f'Error during data transformation for risk factors: {str(e)}'}), 500
+
+    # Get feature names after one-hot encoding
+    feature_names = transformer.named_transformers_['cat'].get_feature_names_out(categorical_features).tolist()
+    feature_names.append('tenure_years') # Add numerical feature
+
+    # Create a SHAP explainer
+    explainer = shap.TreeExplainer(model)
+    shap_values = explainer.shap_values(transformed_data)
+
+    # For binary classification, shap_values will be a list of two arrays.
+    # We are interested in the SHAP values for the positive class (attrition).
+    if isinstance(shap_values, list):
+        shap_values = shap_values[1] # Assuming index 1 is the positive class
+
+    # Map SHAP values to feature names
+    feature_shap_values = dict(zip(feature_names, shap_values[0]))
+
+    # Sort by absolute SHAP value to get top risk factors
+    sorted_risk_factors = sorted(feature_shap_values.items(), key=lambda item: abs(item[1]), reverse=True)
+
+    # Return top N risk factors (e.g., top 5)
+    top_risk_factors = sorted_risk_factors[:5]
+
+    return jsonify({'employee_id': emp_id, 'risk_factors': top_risk_factors}), 200
