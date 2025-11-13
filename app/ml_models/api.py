@@ -3,9 +3,9 @@ import joblib
 import pandas as pd
 from flask import jsonify
 from app import db
-from app.models import Employee, AttritionPrediction
+from app.models import Employee, AttritionPrediction, ModelMetrics
 from app.ml_models import ml_models
-from datetime import datetime
+from datetime import datetime, timezone
 import shap
 
 MODEL_DIR = os.path.join(os.path.dirname(__file__), '..', '..', 'models')
@@ -15,7 +15,7 @@ TRANSFORMER_PATH = os.path.join(MODEL_DIR, 'transformer.pkl')
 def preprocess_data(df):
     # Calculate tenure
     df['hire_date'] = pd.to_datetime(df['hire_date'])
-    df['tenure_days'] = (datetime.now() - df['hire_date']).dt.days
+    df['tenure_days'] = (datetime.now(timezone.utc) - df['hire_date'].dt.tz_localize('UTC')).dt.days
     df['tenure_years'] = df['tenure_days'] / 365.25
 
     # Drop unnecessary columns
@@ -69,12 +69,12 @@ def predict_attrition():
     for i, emp in enumerate(employees):
         prediction = AttritionPrediction.query.filter_by(employee_id=emp.id).first()
         if prediction:
-            prediction.prediction_date = datetime.utcnow()
+            prediction.prediction_date = datetime.now(timezone.utc)
             prediction.attrition_probability = probabilities[i]
         else:
             prediction = AttritionPrediction(
                 employee_id=emp.id,
-                prediction_date=datetime.utcnow(),
+                prediction_date=datetime.now(timezone.utc),
                 attrition_probability=probabilities[i]
             )
             db.session.add(prediction)
@@ -91,7 +91,7 @@ def get_risk_factors(emp_id):
     model = joblib.load(MODEL_PATH)
     transformer = joblib.load(TRANSFORMER_PATH)
 
-    employee = Employee.query.get(emp_id)
+    employee = db.session.get(Employee, emp_id)
     if not employee:
         return jsonify({'error': 'Employee not found.'}), 404
 
@@ -135,3 +135,30 @@ def get_risk_factors(emp_id):
     top_risk_factors = sorted_risk_factors[:5]
 
     return jsonify({'employee_id': emp_id, 'risk_factors': top_risk_factors}), 200
+
+from app.jobs import retrain_model_job
+from apscheduler.schedulers.background import BackgroundScheduler
+
+@ml_models.route('/api/ml/model-metrics', methods=['GET'])
+def get_model_metrics():
+    latest_metrics = ModelMetrics.query.order_by(ModelMetrics.timestamp.desc()).first()
+    if not latest_metrics:
+        return jsonify({'message': 'No model metrics found. Please train the model first.'}), 404
+    
+    if latest_metrics.accuracy < 0.8:
+        scheduler = BackgroundScheduler()
+        scheduler.add_job(retrain_model_job)
+        scheduler.start()
+        return jsonify(latest_metrics.to_dict()), 200
+
+    return jsonify(latest_metrics.to_dict()), 200
+
+@ml_models.route('/api/ml/retrain', methods=['POST'])
+def retrain_model_endpoint():
+    """
+    Triggers a model retraining job.
+    """
+    scheduler = BackgroundScheduler()
+    scheduler.add_job(retrain_model_job)
+    scheduler.start()
+    return jsonify({'message': 'Model retraining has been triggered. The new metrics will be available shortly.'}), 200

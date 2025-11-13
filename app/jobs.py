@@ -1,7 +1,7 @@
 from apscheduler.schedulers.background import BackgroundScheduler
 from .analytics.api import calculate_attrition_rates
 from . import db
-from .models import AttritionAlert, Employee, ExitFeedback
+from .models import AttritionAlert, Employee, ExitFeedback, ModelMetrics
 import smtplib
 from email.mime.text import MIMEText
 import pandas as pd
@@ -11,6 +11,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import OneHotEncoder
+from sklearn.metrics import accuracy_score, precision_score, recall_score
 from datetime import datetime
 from . import create_app
 
@@ -29,58 +30,16 @@ def preprocess_data(df):
 
     return df
 
-def train_attrition_model():
-    app = create_app()
+from app.ml_models.training import retrain_model as train_attrition_model
+
+def retrain_model_job():
+    """
+    Job to retrain the model.
+    """
+    app = create_app('default')
     with app.app_context():
-        print("Starting attrition model training...")
-        # Load data from the database
-        employees = pd.read_sql(db.session.query(Employee).statement, db.engine)
-        exit_feedback = pd.read_sql(db.session.query(ExitFeedback).statement, db.engine)
+        train_attrition_model()
 
-        # Merge dataframes
-        df = pd.merge(employees, exit_feedback, left_on='id', right_on='employee_id', how='left')
-        df['attrition'] = df['exit_date'].notna().astype(int)
-
-        # Preprocess the data
-        df = preprocess_data(df)
-
-        # Define features and target
-        features = ['department', 'position', 'status', 'tenure_years']
-        target = 'attrition'
-
-        X = df[features]
-        y = df[target]
-
-        # Split data into training and testing sets
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
-
-        # Define categorical features
-        categorical_features = ['department', 'position', 'status']
-
-        # Create a column transformer for one-hot encoding
-        transformer = ColumnTransformer(
-            transformers=[
-                ('cat', OneHotEncoder(handle_unknown='ignore'), categorical_features)
-            ],
-            remainder='passthrough'
-        )
-
-        # Fit and transform the training data
-        X_train_transformed = transformer.fit_transform(X_train)
-        X_test_transformed = transformer.transform(X_test)
-
-        # Train the Random Forest model
-        model = RandomForestClassifier(n_estimators=100, random_state=42)
-        model.fit(X_train_transformed, y_train)
-
-        # Ensure the model directory exists
-        os.makedirs(MODEL_DIR, exist_ok=True)
-
-        # Save the model and transformer
-        joblib.dump(model, MODEL_PATH)
-        joblib.dump(transformer, TRANSFORMER_PATH)
-
-        print("Attrition model training completed and model saved.")
 
 
 def check_attrition_hotspots(app):

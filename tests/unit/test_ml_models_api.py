@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import patch, MagicMock
 import os
 from app import create_app, db
-from app.models import Employee, AttritionPrediction
+from app.models import Employee, AttritionPrediction, ModelMetrics
 from datetime import datetime
 import pandas as pd
 import numpy as np
@@ -103,6 +103,53 @@ class TestMLModelsAPI(unittest.TestCase):
         self.assertIn(['status_active', 0.3], risk_factors)
         self.assertIn(['position_Developer', -0.2], risk_factors)
         self.assertIn(['department_Engineering', 0.1], risk_factors)
+
+    @patch('app.ml_models.api.BackgroundScheduler')
+    def test_get_model_metrics_retraining_trigger(self, mock_scheduler):
+        # Add some dummy metrics to the database with accuracy below 0.8
+        metrics = ModelMetrics(accuracy=0.75, precision=0.70, recall=0.80, timestamp=datetime(2023, 1, 2))
+        db.session.add(metrics)
+        db.session.commit()
+
+        response = self.client.get('/ml/api/ml/model-metrics')
+        self.assertEqual(response.status_code, 200)
+        data = response.json
+        self.assertAlmostEqual(data['accuracy'], 0.75)
+
+        # Check if the scheduler was called
+        mock_scheduler.assert_called_once()
+        
+    def test_retrain_model_endpoint(self):
+        response = self.client.post('/ml/api/ml/retrain')
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('Model retraining has been triggered', response.json['message'])
+
+
+    @patch('app.ml_models.training.accuracy_score', return_value=0.75)
+    def test_train_attrition_model_retraining_trigger(self, mock_accuracy_score):
+        # Add some dummy employees and exit feedback to the database
+        employees = [
+            Employee(first_name='John', last_name='Doe', email='john.doe@example.com', department='Engineering', position='Developer', hire_date=datetime(2022, 1, 1), is_active=False),
+            Employee(first_name='Jane', last_name='Smith', email='jane.smith@example.com', department='HR', position='Manager', hire_date=datetime(2021, 5, 15), is_active=True),
+            Employee(first_name='Peter', last_name='Jones', email='peter.jones@example.com', department='Sales', position='Manager', hire_date=datetime(2020, 3, 10), is_active=False),
+            Employee(first_name='Mary', last_name='Williams', email='mary.williams@example.com', department='Engineering', position='Developer', hire_date=datetime(2023, 1, 1), is_active=True),
+            Employee(first_name='David', last_name='Brown', email='david.brown@example.com', department='Sales', position='Associate', hire_date=datetime(2022, 2, 1), is_active=False),
+            Employee(first_name='Susan', last_name='Davis', email='susan.davis@example.com', department='HR', position='Associate', hire_date=datetime(2021, 8, 20), is_active=True),
+            Employee(first_name='Michael', last_name='Miller', email='michael.miller@example.com', department='Engineering', position='Manager', hire_date=datetime(2020, 11, 1), is_active=False),
+            Employee(first_name='Karen', last_name='Wilson', email='karen.wilson@example.com', department='Sales', position='Manager', hire_date=datetime(2019, 7, 15), is_active=True),
+            Employee(first_name='James', last_name='Moore', email='james.moore@example.com', department='Engineering', position='Developer', hire_date=datetime(2022, 4, 1), is_active=False),
+            Employee(first_name='Patricia', last_name='Taylor', email='patricia.taylor@example.com', department='HR', position='Manager', hire_date=datetime(2021, 10, 1), is_active=True),
+        ]
+        db.session.add_all(employees)
+        db.session.commit()
+
+        from app.ml_models.training import retrain_model
+        retrain_model()
+
+        # Check if new metrics are saved in the database
+        metrics = ModelMetrics.query.order_by(ModelMetrics.timestamp.desc()).first()
+        self.assertIsNotNone(metrics)
+        self.assertAlmostEqual(metrics.accuracy, 0.75)
 
 
 if __name__ == '__main__':

@@ -109,3 +109,20 @@ class AttritionAlert(db.Model):
             'value': self.value,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
+
+class ModelMetrics(db.Model):
+    __tablename__ = 'model_metrics'
+    id = db.Column(db.Integer, primary_key=True)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    accuracy = db.Column(db.Float)
+    precision = db.Column(db.Float)
+    recall = db.Column(db.Float)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'timestamp': self.timestamp.isoformat() if self.timestamp else None,
+            'accuracy': self.accuracy,
+            'precision': self.precision,
+            'recall': self.recall
+        }
