@@ -4,17 +4,15 @@ from .. import db
 from ..models import Employee, EmployeeHistory
 from datetime import datetime
 
+from app.utils.decorators import validate_input
+
 @employees.route('/api/employees', methods=['POST'])
-def create_employee():
-    data = request.get_json()
-    if not data:
-        return jsonify({'error': 'No input data provided'}), 400
-
-    required_fields = ['first_name', 'last_name', 'email', 'department', 'position', 'hire_date']
-    for field in required_fields:
-        if field not in data:
-            return jsonify({'error': f'Missing field: {field}'}), 400
-
+@validate_input(
+    required_fields=['first_name', 'last_name', 'email', 'department', 'position', 'hire_date', 'salary'],
+    email_fields=['email'],
+    salary_fields=['salary']
+)
+def create_employee(data):
     try:
         hire_date = datetime.strptime(data['hire_date'], '%Y-%m-%d').date()
     except ValueError:
@@ -26,7 +24,8 @@ def create_employee():
         email=data['email'],
         department=data['department'],
         position=data['position'],
-        hire_date=hire_date
+        hire_date=hire_date,
+        salary=data['salary']
     )
     db.session.add(employee)
     db.session.commit()

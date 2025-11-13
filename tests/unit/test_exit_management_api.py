@@ -44,7 +44,8 @@ class TestExitManagementApi(unittest.TestCase):
                                      data=json.dumps(feedback_data),
                                      content_type='application/json')
         self.assertEqual(response.status_code, 400)
-        self.assertIn('Missing field', str(response.data))
+        self.assertIn('errors', response.json)
+        self.assertIn('exit_date', response.json['errors'])
 
     def test_create_exit_feedback_invalid_reason(self):
         e = Employee(first_name='John', last_name='Doe', email='john.doe@example.com',

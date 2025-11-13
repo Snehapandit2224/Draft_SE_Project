@@ -27,7 +27,8 @@ class TestEmployeeApi(unittest.TestCase):
             'email': 'john.doe@example.com',
             'department': 'Engineering',
             'position': 'Software Engineer',
-            'hire_date': '2023-01-15'
+            'hire_date': '2023-01-15',
+            'salary': 80000
         }
         response = self.client.post('/employees/api/employees',
                                      data=json.dumps(employee_data),
@@ -41,7 +42,8 @@ class TestEmployeeApi(unittest.TestCase):
                                      data=json.dumps(employee_data),
                                      content_type='application/json')
         self.assertEqual(response.status_code, 400)
-        self.assertIn('Missing field', str(response.data))
+        self.assertIn('errors', response.json)
+        self.assertIn('last_name', response.json['errors'])
 
     def test_update_employee(self):
         e = Employee(first_name='John', last_name='Doe', email='john.doe@example.com',

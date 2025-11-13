@@ -27,7 +27,8 @@ class TestEmployeeApiIntegration(unittest.TestCase):
             'email': 'jane.doe@example.com',
             'department': 'Marketing',
             'position': 'Marketing Manager',
-            'hire_date': '2022-11-20'
+            'hire_date': '2022-11-20',
+            'salary': 75000
         }
         # Create employee
         response = self.client.post('/employees/api/employees',

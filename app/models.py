@@ -13,6 +13,7 @@ class Employee(db.Model):
     department = db.Column(db.String(64))
     position = db.Column(db.String(64))
     hire_date = db.Column(db.Date)
+    salary = db.Column(db.Float, db.CheckConstraint('salary >= 30000 AND salary <= 200000'))
     is_active = db.Column(db.Boolean, default=True)
     status = db.Column(db.String(64), default='active')
 
@@ -25,6 +26,7 @@ class Employee(db.Model):
             'department': self.department,
             'position': self.position,
             'hire_date': self.hire_date.isoformat() if self.hire_date else None,
+            'salary': self.salary,
             'is_active': self.is_active,
             'status': self.status
         }
