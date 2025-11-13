@@ -1,7 +1,7 @@
 from apscheduler.schedulers.background import BackgroundScheduler
 from .analytics.api import calculate_attrition_rates
 from . import db
-from .models import AttritionAlert, Employee, ExitFeedback, ModelMetrics
+from .models import AttritionAlert, Employee, ExitFeedback, ModelMetrics, DataIssue
 import smtplib
 from email.mime.text import MIMEText
 import pandas as pd
@@ -77,6 +77,35 @@ def check_attrition_hotspots(app):
                         db.session.commit()
                         send_email_alert(alert)
 
+def find_data_discrepancies(app):
+    """Finds discrepancies between employees and exit_feedback tables."""
+    with app.app_context():
+        # Find inactive employees without exit feedback
+        inactive_employees = Employee.query.filter_by(is_active=False).all()
+        for emp in inactive_employees:
+            feedback = ExitFeedback.query.filter_by(employee_id=emp.id).first()
+            if not feedback:
+                issue = DataIssue(
+                    issue_type='Missing Exit Feedback',
+                    entity_type='Employee',
+                    entity_id=emp.id,
+                    description=f'Inactive employee {emp.first_name} {emp.last_name} has no exit feedback.'
+                )
+                db.session.add(issue)
+
+        # Find exit feedback for active employees
+        active_employees_with_feedback = db.session.query(Employee, ExitFeedback).join(ExitFeedback).filter(Employee.is_active==True).all()
+        for emp, feedback in active_employees_with_feedback:
+            issue = DataIssue(
+                issue_type='Exit Feedback for Active Employee',
+                entity_type='Employee',
+                entity_id=emp.id,
+                description=f'Active employee {emp.first_name} {emp.last_name} has exit feedback.'
+            )
+            db.session.add(issue)
+        
+        db.session.commit()
+
 def send_email_alert(alert):
     """Simulates sending an email alert."""
     msg = MIMEText(f"Attrition hotspot detected!\n\nGroup: {alert.group_name}\nAttrition Rate: {alert.value:.2f}%")
@@ -94,4 +123,6 @@ def init_scheduler(app):
     scheduler = BackgroundScheduler()
     scheduler.add_job(func=check_attrition_hotspots, trigger="interval", days=1, args=[app])
     scheduler.add_job(func=train_attrition_model, trigger="interval", days=1)
+    scheduler.add_job(func=find_data_discrepancies, trigger="interval", days=1, args=[app])
     scheduler.start()
+

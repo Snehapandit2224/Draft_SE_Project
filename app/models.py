@@ -1,6 +1,6 @@
 from . import db
 from sqlalchemy import event
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy.orm.attributes import get_history
 import enum
 
@@ -38,7 +38,7 @@ class EmployeeHistory(db.Model):
     old_status = db.Column(db.String(64))
     new_status = db.Column(db.String(64))
     changed_by = db.Column(db.String(64))
-    changed_at = db.Column(db.DateTime, default=datetime.utcnow)
+    changed_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     def to_dict(self):
         return {
@@ -101,7 +101,7 @@ class AttritionAlert(db.Model):
     alert_type = db.Column(db.String(64))
     group_name = db.Column(db.String(64))
     value = db.Column(db.Float)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     def to_dict(self):
         return {
@@ -115,7 +115,7 @@ class AttritionAlert(db.Model):
 class ModelMetrics(db.Model):
     __tablename__ = 'model_metrics'
     id = db.Column(db.Integer, primary_key=True)
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    timestamp = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     accuracy = db.Column(db.Float)
     precision = db.Column(db.Float)
     recall = db.Column(db.Float)
@@ -127,4 +127,23 @@ class ModelMetrics(db.Model):
             'accuracy': self.accuracy,
             'precision': self.precision,
             'recall': self.recall
+        }
+
+class DataIssue(db.Model):
+    __tablename__ = 'data_issues'
+    id = db.Column(db.Integer, primary_key=True)
+    issue_type = db.Column(db.String(128))
+    entity_type = db.Column(db.String(64))
+    entity_id = db.Column(db.Integer)
+    description = db.Column(db.String(256))
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'issue_type': self.issue_type,
+            'entity_type': self.entity_type,
+            'entity_id': self.entity_id,
+            'description': self.description,
+            'created_at': self.created_at.isoformat() if self.created_at else None
         }
