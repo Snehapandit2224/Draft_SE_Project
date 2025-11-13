@@ -8,3 +8,5 @@ matplotlib==3.6.2
 mysql-connector-python==8.0.31
 python-dotenv==0.21.0
 APScheduler==3.10.1
+openpyxl==3.0.10
+reportlab==3.6.12
