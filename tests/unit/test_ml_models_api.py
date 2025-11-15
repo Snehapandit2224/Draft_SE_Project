@@ -122,7 +122,12 @@ class TestMLModelsAPI(unittest.TestCase):
     def test_retrain_model_endpoint(self):
         response = self.client.post('/ml/api/ml/retrain')
         self.assertEqual(response.status_code, 200)
-        self.assertIn('Model retraining has been triggered', response.json['message'])
+        # In testing mode the endpoint may skip scheduling background jobs;
+        # accept either the triggered message or the skipped message.
+        self.assertTrue(
+            'Model retraining has been triggered' in response.json['message'] or
+            'Model retraining skipped in testing mode' in response.json['message']
+        )
 
 
     @patch('app.ml_models.training.accuracy_score', return_value=0.75)

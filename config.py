@@ -9,11 +9,13 @@ class Config:
     JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY') or 'super-secret-jwt-key'
     JWT_TOKEN_LOCATION = ['headers']
     CORS_HEADERS = 'Content-Type'
+    # Comma-separated list or single origin for allowed CORS origins
+    CORS_ALLOWED_ORIGINS = os.environ.get('CORS_ALLOWED_ORIGINS') or 'http://localhost:5000'
 
 class DevelopmentConfig(Config):
     DEBUG = True
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DEV_DATABASE_URL') or \
-        f"mysql+mysqlconnector://{os.environ.get('DB_USER')}:{os.environ.get('DB_PASSWORD')}@localhost/hr_attrition_dev"
+    # Use SQLite for local development if MySQL is not configured
+    SQLALCHEMY_DATABASE_URI = os.environ.get('DEV_DATABASE_URL') or 'sqlite:///hr_attrition_dev.db'
 
 class TestingConfig(Config):
     TESTING = True

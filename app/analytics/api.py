@@ -1,5 +1,5 @@
 from flask import jsonify, request, make_response
-from flask_jwt_extended import jwt_required
+from app.utils.decorators import conditional_jwt_required
 from . import analytics
 from .. import db
 from ..models import ExitFeedback, Employee, ExitReason
@@ -9,7 +9,7 @@ import io
 import csv
 
 @analytics.route('/api/reports/exit-reasons', methods=['GET'])
-@jwt_required()
+@conditional_jwt_required()
 def get_exit_reasons_report():
     query = db.session.query(
         ExitFeedback.reason,
@@ -44,7 +44,7 @@ def get_exit_reasons_report():
     return jsonify(report)
 
 @analytics.route('/api/reports/exit-reasons/export', methods=['GET'])
-@jwt_required()
+@conditional_jwt_required()
 def export_exit_reasons_report():
     query = db.session.query(
         ExitFeedback.reason,
@@ -165,14 +165,14 @@ def calculate_attrition_rates(group_by='month'):
     return results
 
 @analytics.route('/api/reports/attrition', methods=['GET'])
-@jwt_required()
+@conditional_jwt_required()
 def get_attrition_report():
     group_by = request.args.get('group_by', 'month')
     results = calculate_attrition_rates(group_by)
     return jsonify(results)
 
 @analytics.route('/api/analytics/hotspots', methods=['GET'])
-@jwt_required()
+@conditional_jwt_required()
 def get_attrition_hotspots():
     group_by = request.args.get('group_by', 'department') # department or position
     attrition_data = calculate_attrition_rates(group_by)

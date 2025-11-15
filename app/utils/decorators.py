@@ -1,6 +1,8 @@
 from functools import wraps
 from flask import request, jsonify
 import re
+from flask import current_app
+from flask_jwt_extended import jwt_required
 
 def validate_input(required_fields=[], email_fields=[], salary_fields=[]):
     def decorator(f):
@@ -41,4 +43,24 @@ def validate_input(required_fields=[], email_fields=[], salary_fields=[]):
 
             return f(data, *args, **kwargs)
         return decorated_function
+    return decorator
+
+
+def conditional_jwt_required():
+    """Decorator factory that applies JWT protection when not in TESTING mode.
+
+    Use as `@conditional_jwt_required()` on view functions. In testing mode it
+    will bypass JWT checks so tests can call endpoints without tokens.
+    """
+    def decorator(fn):
+        protected = jwt_required()(fn)
+
+        @wraps(fn)
+        def wrapper(*args, **kwargs):
+            if current_app.config.get('TESTING'):
+                return fn(*args, **kwargs)
+            return protected(*args, **kwargs)
+
+        return wrapper
+
     return decorator

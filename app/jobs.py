@@ -36,9 +36,20 @@ def retrain_model_job():
     """
     Job to retrain the model.
     """
-    app = create_app('default')
+    # Avoid running the retrain job in testing environments to prevent
+    # accidental connections to production databases during test runs.
+    config_name = os.getenv('FLASK_CONFIG') or 'default'
+    if config_name == 'testing':
+        return
+
+    app = create_app(config_name)
     with app.app_context():
-        train_attrition_model()
+        try:
+            train_attrition_model()
+        except Exception:
+            # Swallow exceptions to avoid crashing scheduler; errors will be
+            # visible in logs during manual runs.
+            return
 
 
 

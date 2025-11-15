@@ -29,7 +29,8 @@ def login(data):
 
     user = User.query.filter_by(username=username).first()
     if user and user.check_password(password):
-        access_token = create_access_token(identity=user.id)
+        # Use string identity to avoid PyJWT claim type validation issues
+        access_token = create_access_token(identity=str(user.id))
         return jsonify(access_token=access_token), 200
     else:
         return jsonify({'error': 'Invalid credentials'}), 401
