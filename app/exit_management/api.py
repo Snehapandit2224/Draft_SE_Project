@@ -1,4 +1,5 @@
 from flask import request, jsonify
+from flask_jwt_extended import jwt_required
 from . import exit_management
 from .. import db
 from ..models import ExitFeedback, Employee, ExitReason
@@ -7,6 +8,7 @@ from datetime import datetime
 from app.utils.decorators import validate_input
 
 @exit_management.route('/api/exit-feedback', methods=['POST'])
+@jwt_required()
 @validate_input(required_fields=['employee_id', 'exit_date', 'reason', 'feedback'])
 def create_exit_feedback(data):
     employee = Employee.query.get(data['employee_id'])
@@ -34,6 +36,7 @@ def create_exit_feedback(data):
     return jsonify(feedback.to_dict()), 201
 
 @exit_management.route('/api/exit-feedback/<int:id>/complete', methods=['PATCH'])
+@jwt_required()
 def complete_exit_interview(id):
     feedback = ExitFeedback.query.get_or_404(id)
     feedback.interview_completed = True
@@ -42,6 +45,7 @@ def complete_exit_interview(id):
     return jsonify(feedback.to_dict())
 
 @exit_management.route('/api/exit-feedback/pending', methods=['GET'])
+@jwt_required()
 def get_pending_exit_interviews():
     pending_feedback = ExitFeedback.query.filter_by(interview_completed=False).all()
     return jsonify([f.to_dict() for f in pending_feedback])

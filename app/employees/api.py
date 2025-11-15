@@ -1,4 +1,5 @@
 from flask import request, jsonify
+from flask_jwt_extended import jwt_required, current_user
 from . import employees
 from .. import db
 from ..models import Employee, EmployeeHistory
@@ -7,6 +8,7 @@ from datetime import datetime
 from app.utils.decorators import validate_input
 
 @employees.route('/api/employees', methods=['POST'])
+@jwt_required()
 @validate_input(
     required_fields=['first_name', 'last_name', 'email', 'department', 'position', 'hire_date', 'salary'],
     email_fields=['email'],
@@ -32,6 +34,7 @@ def create_employee(data):
     return jsonify(employee.to_dict()), 201
 
 @employees.route('/api/employees/<int:id>', methods=['GET', 'PUT'])
+@jwt_required()
 def employee_detail(id):
     employee = Employee.query.get_or_404(id)
     if request.method == 'GET':
@@ -66,6 +69,7 @@ def employee_detail(id):
     return jsonify(employee.to_dict())
 
 @employees.route('/api/employees', methods=['GET'])
+@jwt_required()
 def get_employees():
     query = Employee.query
 
@@ -94,6 +98,7 @@ def get_employees():
 
 
 @employees.route('/api/employees/<int:id>/history', methods=['GET'])
+@jwt_required()
 def get_employee_history(id):
     employee = Employee.query.get_or_404(id)
     history = EmployeeHistory.query.filter_by(employee_id=id).all()

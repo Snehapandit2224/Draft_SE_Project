@@ -2,6 +2,7 @@ import os
 import joblib
 import pandas as pd
 from flask import jsonify
+from flask_jwt_extended import jwt_required
 from app import db
 from app.models import Employee, AttritionPrediction, ModelMetrics
 from app.ml_models import ml_models
@@ -24,6 +25,7 @@ def preprocess_data(df):
     return df
 
 @ml_models.route('/api/ml/predict', methods=['POST'])
+@jwt_required()
 def predict_attrition():
     # Load the trained model and transformer
     if not os.path.exists(MODEL_PATH) or not os.path.exists(TRANSFORMER_PATH):
@@ -84,6 +86,7 @@ def predict_attrition():
     return jsonify({'message': f'Successfully predicted attrition for {len(employees)} employees.'}), 200
 
 @ml_models.route('/api/ml/risk-factors/<int:emp_id>', methods=['GET'])
+@jwt_required()
 def get_risk_factors(emp_id):
     if not os.path.exists(MODEL_PATH) or not os.path.exists(TRANSFORMER_PATH):
         return jsonify({'error': 'Model or transformer not found. Please train the model first.'}), 500
@@ -140,6 +143,7 @@ from app.jobs import retrain_model_job
 from apscheduler.schedulers.background import BackgroundScheduler
 
 @ml_models.route('/api/ml/model-metrics', methods=['GET'])
+@jwt_required()
 def get_model_metrics():
     latest_metrics = ModelMetrics.query.order_by(ModelMetrics.timestamp.desc()).first()
     if not latest_metrics:
@@ -154,6 +158,7 @@ def get_model_metrics():
     return jsonify(latest_metrics.to_dict()), 200
 
 @ml_models.route('/api/ml/retrain', methods=['POST'])
+@jwt_required()
 def retrain_model_endpoint():
     """
     Triggers a model retraining job.

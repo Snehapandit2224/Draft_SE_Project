@@ -1,14 +1,24 @@
-from flask import Flask
+from flask import Flask, jsonify
 from flask_sqlalchemy import SQLAlchemy
+from flask_jwt_extended import JWTManager
+from flask_cors import CORS
+from flask_bcrypt import Bcrypt
 from config import config
 
 db = SQLAlchemy()
+jwt = JWTManager()
+cors = CORS()
+bcrypt = Bcrypt()
 
 def create_app(config_name):
     app = Flask(__name__)
     app.config.from_object(config[config_name])
 
     db.init_app(app)
+    jwt.init_app(app)
+    jwt.init_app(app)
+    cors.init_app(app)
+    bcrypt.init_app(app)
 
     from . import models
 
@@ -30,5 +40,25 @@ def create_app(config_name):
 
     from .alerts import alerts as alerts_blueprint
     app.register_blueprint(alerts_blueprint, url_prefix='/alerts')
+
+    from .auth import auth as auth_blueprint
+    app.register_blueprint(auth_blueprint, url_prefix='/auth/api')
+
+    @jwt.user_lookup_loader
+    def user_lookup_callback(_jwt_header, jwt_data):
+        identity = jwt_data["sub"]
+        return models.User.query.filter_by(id=identity).one_or_none()
+
+    @jwt.unauthorized_loader
+    def unauthorized_response(callback):
+        return jsonify({"msg": "Missing Authorization Header"}), 401
+
+    @jwt.invalid_token_loader
+    def invalid_token_response(callback):
+        return jsonify({"msg": "Signature verification failed"}), 401
+
+    @jwt.expired_token_loader
+    def expired_token_response(callback):
+        return jsonify({"msg": "Token has expired"}), 401
 
     return app

@@ -6,6 +6,9 @@ load_dotenv()
 class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'a-hard-to-guess-string'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY') or 'super-secret-jwt-key'
+    JWT_TOKEN_LOCATION = ['headers']
+    CORS_HEADERS = 'Content-Type'
 
 class DevelopmentConfig(Config):
     DEBUG = True
@@ -15,6 +18,7 @@ class DevelopmentConfig(Config):
 class TestingConfig(Config):
     TESTING = True
     SQLALCHEMY_DATABASE_URI = 'sqlite:///test.db'
+    JWT_SECRET_KEY = 'test-secret-jwt-key'
 
 class ProductionConfig(Config):
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \

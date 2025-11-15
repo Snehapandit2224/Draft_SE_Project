@@ -1,4 +1,5 @@
 from flask import request, jsonify, send_file
+from flask_jwt_extended import jwt_required
 from app.analytics import analytics
 from app.models import Employee
 import pandas as pd
@@ -8,6 +9,7 @@ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
 from reportlab.lib import colors
 
 @analytics.route('/api/reports/export', methods=['GET'])
+@jwt_required()
 def export_report():
     format = request.args.get('format', 'csv')
     
