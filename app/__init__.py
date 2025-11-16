@@ -18,6 +18,7 @@ def create_app(config_name):
 
     db.init_app(app)
     jwt.init_app(app)
+    jwt.login_view = 'auth.login'
     cache.init_app(app)
     # init extensions
     # Parse CORS allowed origins (comma-separated or single)
@@ -38,13 +39,14 @@ def create_app(config_name):
     app.register_blueprint(employees_blueprint, url_prefix='/employees')
 
     from .exit_management import exit_management as exit_management_blueprint
+    from .exit_management import routes
     app.register_blueprint(exit_management_blueprint, url_prefix='/exit')
 
     from .analytics import analytics as analytics_blueprint
     app.register_blueprint(analytics_blueprint, url_prefix='/analytics')
 
     from .ml_models import ml_models as ml_models_blueprint
-    from .ml_models import api
+    from .ml_models import routes
     app.register_blueprint(ml_models_blueprint, url_prefix='/ml')
 
     from .alerts import alerts as alerts_blueprint
@@ -52,7 +54,7 @@ def create_app(config_name):
 
     from .auth import auth as auth_blueprint
     # Register auth blueprint under /api/auth so endpoints become /api/auth/login etc.
-    app.register_blueprint(auth_blueprint, url_prefix='/api/auth')
+    app.register_blueprint(auth_blueprint, url_prefix='/auth')
 
     from .health import health as health_blueprint
     app.register_blueprint(health_blueprint)
@@ -94,7 +96,7 @@ def create_app(config_name):
         return jsonify({"msg": "Signature verification failed"}), 401
 
     @jwt.expired_token_loader
-    def expired_token_response(callback):
+    def expired_token_response(jwt_header, jwt_payload):
         return jsonify({"msg": "Token has expired"}), 401
 
     return app

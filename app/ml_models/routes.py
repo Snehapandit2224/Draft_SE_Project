@@ -1,6 +1,10 @@
 from flask import render_template, jsonify
 from app.ml_models import ml_models
 
+@ml_models.route('/')
+def index():
+    return render_template('ml_models/index.html')
+
 @ml_models.route('/risk-factors/<int:emp_id>')
 def risk_factors_ui(emp_id):
     # This route will render a UI page to display risk factors for a given employee.

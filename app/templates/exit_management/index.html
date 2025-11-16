@@ -3,6 +3,109 @@
 {% block title %}Exit Management{% endblock %}
 
 {% block content %}
-<h1>Exit Management</h1>
-<p>This is the exit management section.</p>
+<div class="container">
+    <h1>Exit Management</h1>
+    <div class="row">
+        <div class="col-md-6">
+            <h2>Pending Exit Interviews</h2>
+            <ul class="list-group" id="pending-interviews">
+            </ul>
+        </div>
+        <div class="col-md-6">
+            <h2>Submit Exit Feedback</h2>
+            <form id="exit-feedback-form">
+                <div class="mb-3">
+                    <label for="employee_id" class="form-label">Employee</label>
+                    <select class="form-select" id="employee_id" name="employee_id" required>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label for="exit_date" class="form-label">Exit Date</label>
+                    <input type="date" class="form-control" id="exit_date" name="exit_date" required>
+                </div>
+                <div class="mb-3">
+                    <label for="reason" class="form-label">Reason</label>
+                    <select class="form-select" id="reason" name="reason" required>
+                        <option value="resignation">Resignation</option>
+                        <option value="termination">Termination</option>
+                        <option value="retirement">Retirement</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label for="feedback" class="form-label">Feedback</label>
+                    <textarea class="form-control" id="feedback" name="feedback" rows="3"></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">Submit</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const pendingInterviewsList = document.getElementById('pending-interviews');
+        const employeeSelect = document.getElementById('employee_id');
+        const exitFeedbackForm = document.getElementById('exit-feedback-form');
+
+        function fetchPendingInterviews() {
+            fetch('/exit/api/exit-feedback/pending')
+                .then(response => response.json())
+                .then(data => {
+                    pendingInterviewsList.innerHTML = '';
+                    data.forEach(item => {
+                        const listItem = document.createElement('li');
+                        listItem.className = 'list-group-item d-flex justify-content-between align-items-center';
+                        listItem.innerHTML = `
+                            <span>${item.employee.first_name} ${item.employee.last_name}</span>
+                            <button class="btn btn-sm btn-success" data-id="${item.id}">Complete</button>
+                        `;
+                        pendingInterviewsList.appendChild(listItem);
+                    });
+                });
+        }
+
+        function fetchEmployees() {
+            fetch('/employees/api/employees')
+                .then(response => response.json())
+                .then(data => {
+                    data.employees.forEach(employee => {
+                        const option = document.createElement('option');
+                        option.value = employee.id;
+                        option.textContent = `${employee.first_name} ${employee.last_name}`;
+                        employeeSelect.appendChild(option);
+                    });
+                });
+        }
+
+        exitFeedbackForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            const formData = new FormData(exitFeedbackForm);
+            const data = Object.fromEntries(formData.entries());
+            fetch('/exit/api/exit-feedback', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            }).then(() => {
+                exitFeedbackForm.reset();
+                fetchPendingInterviews();
+            });
+        });
+
+        pendingInterviewsList.addEventListener('click', function (e) {
+            if (e.target.classList.contains('btn-success')) {
+                const id = e.target.dataset.id;
+                fetch(`/exit/api/exit-feedback/${id}/complete`, {
+                    method: 'PATCH'
+                }).then(() => {
+                    fetchPendingInterviews();
+                });
+            }
+        });
+
+        fetchPendingInterviews();
+        fetchEmployees();
+    });
+</script>
 {% endblock %}

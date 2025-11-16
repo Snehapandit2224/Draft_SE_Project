@@ -3,6 +3,185 @@
 {% block title %}Dashboard{% endblock %}
 
 {% block content %}
-<h1>Dashboard</h1>
-<p>Welcome to the HR Attrition Analysis System.</p>
+<div class="container">
+    <h1>Dashboard</h1>
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Overall Attrition Rate</h5>
+                    <p class="card-text" id="overall-attrition-rate">Loading...</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">New Hires</h5>
+                    <p class="card-text" id="new-hires">Loading...</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Terminations</h5>
+                    <p class="card-text" id="terminations">Loading...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <h2>Attrition Hotspots</h2>
+            <canvas id="hotspotsChart"></canvas>
+        </div>
+        <div class="col-md-6">
+            <h2>Top Exit Reasons</h2>
+            <canvas id="exitReasonsChart"></canvas>
+        </div>
+    </div>
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <h2>Recent Alerts</h2>
+            <ul class="list-group" id="recent-alerts">
+            </ul>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-chart-matrix@1.1.1"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Key metrics
+        fetch('/analytics/api/reports/attrition')
+            .then(response => response.json())
+            .then(data => {
+                const overallAttritionRate = data.reduce((acc, item) => acc + item.attrition_rate, 0) / data.length;
+                document.getElementById('overall-attrition-rate').textContent = `${overallAttritionRate.toFixed(2)}%`;
+            });
+
+        fetch('/employees/api/employees?status=active')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('new-hires').textContent = data.total;
+            });
+
+        fetch('/employees/api/employees?status=terminated')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('terminations').textContent = data.total;
+            });
+
+        // Attrition hotspots
+        const hotspotsCtx = document.getElementById('hotspotsChart').getContext('2d');
+        fetch('/analytics/api/analytics/hotspots')
+            .then(response => response.json())
+            .then(data => {
+                const groups = [...new Set(data.map(item => item.group))];
+                const periods = [...new Set(data.map(item => item.period))].sort();
+
+                const chartData = {
+                    datasets: [{
+                        label: 'Attrition Rate',
+                        data: data.map(item => ({
+                            x: item.period,
+                            y: item.group,
+                            v: item.attrition_rate
+                        })),
+                        backgroundColor(ctx) {
+                            const value = ctx.dataset.data[ctx.dataIndex].v;
+                            const alpha = (value - 15) / 30; // Scale color based on value
+                            return `rgba(255, 99, 132, ${alpha})`;
+                        },
+                        borderColor: 'grey',
+                        borderWidth: 1,
+                        width: ({chart}) => (chart.chartArea || {}).width / periods.length - 1,
+                        height: ({chart}) => (chart.chartArea || {}).height / groups.length - 1
+                    }]
+                };
+
+                new Chart(hotspotsCtx, {
+                    type: 'matrix',
+                    data: chartData,
+                    options: {
+                        scales: {
+                            x: {
+                                type: 'category',
+                                labels: periods,
+                                ticks: {
+                                    autoSkip: false
+                                }
+                            },
+                            y: {
+                                type: 'category',
+                                labels: groups,
+                                offset: true
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    title: function() {
+                                        return '';
+                                    },
+                                    label: function(context) {
+                                        const v = context.dataset.data[context.dataIndex];
+                                        return [v.y, v.x, `Attrition: ${v.v.toFixed(2)}%`];
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            });
+
+        // Top exit reasons
+        const exitReasonsCtx = document.getElementById('exitReasonsChart').getContext('2d');
+        fetch('/analytics/api/reports/exit-reasons')
+            .then(response => response.json())
+            .then(data => {
+                const labels = data.map(item => item.reason);
+                const counts = data.map(item => item.count);
+
+                new Chart(exitReasonsCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: '# of Exits',
+                            data: counts,
+                            backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        scales: {
+                            y: {
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+            });
+
+        // Recent alerts
+        const recentAlertsList = document.getElementById('recent-alerts');
+        fetch('/alerts/api/alerts')
+            .then(response => response.json())
+            .then(data => {
+                data.slice(0, 5).forEach(item => {
+                    const listItem = document.createElement('li');
+                    listItem.className = 'list-group-item';
+                    listItem.textContent = `${item.alert_type}: ${item.group_name} - ${item.value.toFixed(2)}%`;
+                    recentAlertsList.appendChild(listItem);
+                });
+            });
+    });
+</script>
 {% endblock %}

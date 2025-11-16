@@ -9,6 +9,7 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(64), unique=True, nullable=False)
     password_hash = db.Column(db.String(128), nullable=False)
+    role = db.Column(db.String(64), default='employee')
 
     def set_password(self, password):
         self.password_hash = bcrypt.generate_password_hash(password).decode('utf-8')
@@ -19,7 +20,8 @@ class User(db.Model):
     def to_dict(self):
         return {
             'id': self.id,
-            'username': self.username
+            'username': self.username,
+            'role': self.role
         }
 
 class Employee(db.Model):
