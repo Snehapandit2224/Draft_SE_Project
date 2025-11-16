@@ -16,6 +16,11 @@ class DevelopmentConfig(Config):
     DEBUG = True
     # Use SQLite for local development if MySQL is not configured
     SQLALCHEMY_DATABASE_URI = os.environ.get('DEV_DATABASE_URL') or 'sqlite:///hr_attrition_dev.db'
+    if not SQLALCHEMY_DATABASE_URI.startswith('sqlite'):
+        SQLALCHEMY_POOL_SIZE = int(os.environ.get('SQLALCHEMY_POOL_SIZE') or 5)
+        SQLALCHEMY_POOL_TIMEOUT = int(os.environ.get('SQLALCHEMY_POOL_TIMEOUT') or 30)
+        SQLALCHEMY_POOL_RECYCLE = int(os.environ.get('SQLALCHEMY_POOL_RECYCLE') or 1800)
+        SQLALCHEMY_MAX_OVERFLOW = int(os.environ.get('SQLALCHEMY_MAX_OVERFLOW') or 10)
 
 class TestingConfig(Config):
     TESTING = True
@@ -25,6 +30,11 @@ class TestingConfig(Config):
 class ProductionConfig(Config):
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
         'mysql+mysqlconnector://user:password@host/hr_attrition_prod'
+    if not SQLALCHEMY_DATABASE_URI.startswith('sqlite'):
+        SQLALCHEMY_POOL_SIZE = int(os.environ.get('SQLALCHEMY_POOL_SIZE') or 5)
+        SQLALCHEMY_POOL_TIMEOUT = int(os.environ.get('SQLALCHEMY_POOL_TIMEOUT') or 30)
+        SQLALCHEMY_POOL_RECYCLE = int(os.environ.get('SQLALCHEMY_POOL_RECYCLE') or 1800)
+        SQLALCHEMY_MAX_OVERFLOW = int(os.environ.get('SQLALCHEMY_MAX_OVERFLOW') or 10)
 
 config = {
     'development': DevelopmentConfig,

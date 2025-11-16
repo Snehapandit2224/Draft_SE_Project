@@ -51,6 +51,12 @@ def create_app(config_name):
     # Register auth blueprint under /api/auth so endpoints become /api/auth/login etc.
     app.register_blueprint(auth_blueprint, url_prefix='/api/auth')
 
+    from .health import health as health_blueprint
+    app.register_blueprint(health_blueprint)
+
+    from .errors import register_error_handlers
+    register_error_handlers(app)
+
     # Enforce HTTPS in non-debug/non-testing environments
     from flask import request
 
