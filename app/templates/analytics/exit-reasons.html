@@ -35,7 +35,8 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        const ctx = document.getElementById('exitReasonsChart').getContext('2d');
+        const chartContainer = document.getElementById('exitReasonsChart');
+        const ctx = chartContainer.getContext('2d');
         let chart;
 
         function updateChart(data) {
@@ -76,6 +77,15 @@
                 });
         }
 
+        const observer = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting) {
+                fetchData('/analytics/api/reports/exit-reasons');
+                observer.disconnect();
+            }
+        });
+
+        observer.observe(chartContainer);
+
         const filterForm = document.getElementById('filterForm');
         filterForm.addEventListener('submit', function (e) {
             e.preventDefault();
@@ -91,8 +101,6 @@
             const params = new URLSearchParams(formData);
             window.location.href = `/analytics/api/reports/exit-reasons/export?${params.toString()}`;
         });
-
-        fetchData('/analytics/api/reports/exit-reasons');
     });
 </script>
 {% endblock %}

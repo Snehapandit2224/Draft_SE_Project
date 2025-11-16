@@ -2,6 +2,7 @@ from flask import request, jsonify, send_file
 from app.utils.decorators import conditional_jwt_required
 from app.analytics import analytics
 from app.models import Employee
+from app import cache
 import pandas as pd
 from io import BytesIO
 from reportlab.lib.pagesizes import letter
@@ -10,6 +11,7 @@ from reportlab.lib import colors
 
 @analytics.route('/api/reports/export', methods=['GET'])
 @conditional_jwt_required()
+@cache.cached(timeout=300)
 def export_report():
     format = request.args.get('format', 'csv')
     
@@ -31,13 +33,13 @@ def export_report():
         buffer = BytesIO()
         df.to_csv(buffer, index=False)
         buffer.seek(0)
-        return send_file(buffer, as_attachment=True, download_name='report.csv', mimetype='text/csv')
+        return buffer.getvalue(), 200, {'Content-Type': 'text/csv', 'Content-Disposition': 'attachment; filename=report.csv'}
     
     elif format == 'excel':
         buffer = BytesIO()
         df.to_excel(buffer, index=False)
         buffer.seek(0)
-        return send_file(buffer, as_attachment=True, download_name='report.xlsx', mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        return buffer.getvalue(), 200, {'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'Content-Disposition': 'attachment; filename=report.xlsx'}
 
     elif format == 'pdf':
         buffer = BytesIO()
@@ -61,7 +63,7 @@ def export_report():
         doc.build(elements)
         
         buffer.seek(0)
-        return send_file(buffer, as_attachment=True, download_name='report.pdf', mimetype='application/pdf')
+        return buffer.getvalue(), 200, {'Content-Type': 'application/pdf', 'Content-Disposition': 'attachment; filename=report.pdf'}
 
     else:
         return jsonify({'error': 'Invalid format specified'}), 400

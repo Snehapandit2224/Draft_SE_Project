@@ -11,6 +11,9 @@ class Config:
     CORS_HEADERS = 'Content-Type'
     # Comma-separated list or single origin for allowed CORS origins
     CORS_ALLOWED_ORIGINS = os.environ.get('CORS_ALLOWED_ORIGINS') or 'http://localhost:5000'
+    CACHE_TYPE = os.environ.get('CACHE_TYPE') or 'redis'
+    CACHE_REDIS_URL = os.environ.get('CACHE_REDIS_URL') or 'redis://localhost:6379/0'
+    CACHE_DEFAULT_TIMEOUT = int(os.environ.get('CACHE_DEFAULT_TIMEOUT') or 300)
 
 class DevelopmentConfig(Config):
     DEBUG = True
@@ -26,6 +29,7 @@ class TestingConfig(Config):
     TESTING = True
     SQLALCHEMY_DATABASE_URI = 'sqlite:///test.db'
     JWT_SECRET_KEY = 'test-secret-jwt-key'
+    CACHE_TYPE = 'SimpleCache'
 
 class ProductionConfig(Config):
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \

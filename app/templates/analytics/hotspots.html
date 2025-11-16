@@ -16,7 +16,8 @@
 <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-matrix@1.1.1"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        const ctx = document.getElementById('hotspotsChart').getContext('2d');
+        const chartContainer = document.getElementById('hotspotsChart');
+        const ctx = chartContainer.getContext('2d');
         
         function createHeatmap(data) {
             const groups = [...new Set(data.map(item => item.group))];
@@ -80,11 +81,18 @@
             });
         }
 
-        fetch('/analytics/api/analytics/hotspots')
-            .then(response => response.json())
-            .then(data => {
-                createHeatmap(data);
-            });
+        const observer = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting) {
+                fetch('/analytics/api/analytics/hotspots')
+                    .then(response => response.json())
+                    .then(data => {
+                        createHeatmap(data);
+                    });
+                observer.disconnect();
+            }
+        });
+
+        observer.observe(chartContainer);
     });
 </script>
 {% endblock %}
