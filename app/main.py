@@ -1,10 +1,10 @@
-from flask import Blueprint, render_template, redirect, url_for
-from flask_jwt_extended import jwt_required
+from flask import Blueprint, render_template, redirect, url_for, request
+from app.utils.decorators import login_required
 
 main = Blueprint('main', __name__)
 
 @main.route('/')
-@jwt_required()
+@login_required
 def index():
     return render_template('index.html')
 

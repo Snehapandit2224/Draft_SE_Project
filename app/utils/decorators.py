@@ -1,5 +1,5 @@
 from functools import wraps
-from flask import request, jsonify
+from flask import request, jsonify, redirect, url_for
 import re
 from flask import current_app
 from flask_jwt_extended import jwt_required
@@ -64,3 +64,28 @@ def conditional_jwt_required():
         return wrapper
 
     return decorator
+
+
+def login_required(f):
+    """Decorator that requires user to be logged in.
+    
+    For HTML requests, redirects to login page.
+    For API requests, returns 401 error.
+    """
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        try:
+            from flask_jwt_extended import verify_jwt_in_request
+            verify_jwt_in_request()
+        except Exception:
+            # Check if this is an API request or HTML request
+            is_api = request.path.startswith('/api/')
+            json_quality = request.accept_mimetypes.quality('application/json') or 0
+            html_quality = request.accept_mimetypes.quality('text/html') or 0
+            
+            if is_api or json_quality > html_quality:
+                return jsonify({'msg': 'Missing or invalid authentication'}), 401
+            return redirect(url_for('auth.login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
