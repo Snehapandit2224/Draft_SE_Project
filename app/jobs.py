@@ -56,18 +56,32 @@ def retrain_model_job():
 def check_attrition_hotspots(app):
     """Checks for attrition hotspots and creates alerts."""
     with app.app_context():
+        print("--- Running check_attrition_hotspots job ---")
         attrition_data = calculate_attrition_rates('department')
+        print(f"Attrition data from calculate_attrition_rates: {attrition_data}")
         
+        if not attrition_data:
+            print("No attrition data to process for hotspots.")
+            return
+
         df = pd.DataFrame(attrition_data)
+        print(f"DataFrame before processing: \n{df}")
         df['period'] = pd.to_datetime(df['period'])
         df = df.set_index(['period', 'group'])['attrition_rate'].unstack()
+        print(f"DataFrame after unstacking: \n{df}")
 
         # Calculate 3-month rolling average
         rolling_avg = df.rolling(window=3).mean()
+        print(f"3-month rolling average: \n{rolling_avg}")
 
-        # Find hotspots
+        # Find hotspots (attrition rate > 15%)
         hotspots = rolling_avg[rolling_avg > 15]
+        print(f"Identified hotspots: \n{hotspots}")
         
+        if hotspots.empty:
+            print("No attrition hotspots identified above 15%.")
+            return
+
         for group in hotspots.columns:
             for period, value in hotspots[group].items():
                 if pd.notna(value):
@@ -86,7 +100,11 @@ def check_attrition_hotspots(app):
                         )
                         db.session.add(alert)
                         db.session.commit()
+                        print(f"Created new attrition hotspot alert: Group={group}, Rate={value:.2f}%")
                         send_email_alert(alert)
+                    else:
+                        print(f"Attrition hotspot alert already exists for Group={group}, Rate={value:.2f}%")
+        print("--- Finished check_attrition_hotspots job ---")
 
 def find_data_discrepancies(app):
     """Finds discrepancies between employees and exit_feedback tables."""
@@ -132,7 +150,7 @@ def send_email_alert(alert):
 def init_scheduler(app):
     """Initializes and starts the scheduler."""
     scheduler = BackgroundScheduler()
-    scheduler.add_job(func=check_attrition_hotspots, trigger="interval", days=1, args=[app])
+    scheduler.add_job(func=check_attrition_hotspots, trigger="interval", seconds=10, args=[app])
     scheduler.add_job(func=train_attrition_model, trigger="interval", days=1)
     scheduler.add_job(func=find_data_discrepancies, trigger="interval", days=1, args=[app])
     scheduler.start()

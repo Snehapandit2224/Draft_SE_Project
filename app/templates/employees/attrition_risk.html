@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}Your Attrition Risk{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>Your Attrition Risk</h1>
+
+    {% if employee %}
+        <div class="card">
+            <div class="card-header">
+                Attrition Prediction for {{ employee.first_name }} {{ employee.last_name }}
+            </div>
+            <div class="card-body">
+                <p><strong>Current Attrition Probability:</strong> <span id="attritionProbability">Loading...</span></p>
+                <p><strong>Key Influencing Factors:</strong> <span id="shapValues">Loading...</span></p>
+                <small class="text-muted">This prediction is based on our machine learning model and should be used for informational purposes only. It does not guarantee future outcomes.</small>
+            </div>
+        </div>
+    {% else %}
+        <div class="alert alert-warning" role="alert">
+            Employee details not found.
+        </div>
+    {% endif %}
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const employeeId = "{{ employee.id }}"; // Get employee ID from Jinja context
+        if (employeeId) {
+            fetch(`/ml/api/predictions/${employeeId}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.attrition_probability !== undefined) {
+                    document.getElementById('attritionProbability').textContent = `${(data.attrition_probability * 100).toFixed(2)}%`;
+                } else {
+                    document.getElementById('attritionProbability').textContent = 'N/A';
+                }
+
+                if (data.shap_values) {
+                    // Assuming shap_values is a dictionary or JSON string
+                    const shap = JSON.parse(data.shap_values);
+                    let factors = Object.entries(shap)
+                        .sort(([, a], [, b]) => Math.abs(b) - Math.abs(a)) // Sort by absolute SHAP value
+                        .slice(0, 5) // Get top 5 factors
+                        .map(([key, value]) => `${key} (${value.toFixed(2)})`)
+                        .join(', ');
+                    document.getElementById('shapValues').textContent = factors;
+                } else {
+                    document.getElementById('shapValues').textContent = 'No specific factors identified.';
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching attrition prediction:', error);
+                document.getElementById('attritionProbability').textContent = 'Error loading data.';
+                document.getElementById('shapValues').textContent = 'Error loading data.';
+            });
+        }
+    });
+</script>
+{% endblock %}

@@ -16,6 +16,12 @@ def create_app(config_name):
     app = Flask(__name__)
     app.config.from_object(config[config_name])
 
+    # Configure Flask-JWT-Extended to look for tokens in cookies
+    app.config["JWT_TOKEN_LOCATION"] = ["cookies"]
+    app.config["JWT_COOKIE_CSRF_PROTECT"] = False # Disable CSRF for simplicity in development
+
+    print(f"SQLALCHEMY_DATABASE_URI: {app.config['SQLALCHEMY_DATABASE_URI']}")
+
     db.init_app(app)
     jwt.init_app(app)
     jwt.login_view = 'auth.login'

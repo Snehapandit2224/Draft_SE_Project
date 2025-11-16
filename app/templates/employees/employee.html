@@ -13,6 +13,12 @@
             <p class="card-text"><strong>Position:</strong> {{ employee.position }}</p>
             <p class="card-text"><strong>Status:</strong> {{ employee.status }}</p>
             <p class="card-text"><strong>Hire Date:</strong> {{ employee.hire_date }}</p>
+            {% if attrition_prediction %}
+            <p class="card-text"><strong>Attrition Probability:</strong> {{ "%.2f"|format(attrition_prediction.attrition_probability * 100) }}%</p>
+            {% else %}
+            <p class="card-text"><strong>Attrition Probability:</strong> Not available</p>
+            {% endif %}
+
         </div>
     </div>
     <a href="{{ url_for('employees.list_employees') }}" class="btn btn-secondary mt-3">Back to Employees</a>

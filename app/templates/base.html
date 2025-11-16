@@ -55,11 +55,15 @@
 <body>
     <div class="sidebar">
         <a href="{{ url_for('main.index') }}"><span class="icon material-symbols-outlined">dashboard</span><span class="text">Dashboard</span></a>
-        <a href="{{ url_for('employees.list_employees') }}"><span class="icon material-symbols-outlined">group</span><span class="text">Employees</span></a>
-        <a href="{{ url_for('exit_management.index') }}"><span class="icon material-symbols-outlined">exit_to_app</span><span class="text">Exit Management</span></a>
-        <a href="{{ url_for('analytics.index') }}"><span class="icon material-symbols-outlined">analytics</span><span class="text">Analytics</span></a>
-        <a href="{{ url_for('ml_models.index') }}"><span class="icon material-symbols-outlined">smart_toy</span><span class="text">ML Models</span></a>
-        <a href="{{ url_for('alerts.index') }}"><span class="icon material-symbols-outlined">notifications</span><span class="text">Alerts</span></a>
+        {% if current_user and current_user.role == 'admin' %}
+            <a href="{{ url_for('employees.list_employees') }}"><span class="icon material-symbols-outlined">group</span><span class="text">Employees</span></a>
+            <a href="{{ url_for('exit_management.index') }}"><span class="icon material-symbols-outlined">exit_to_app</span><span class="text">Exit Management</span></a>
+            <a href="{{ url_for('analytics.index') }}"><span class="icon material-symbols-outlined">analytics</span><span class="text">Analytics</span></a>
+            <a href="{{ url_for('ml_models.index') }}"><span class="icon material-symbols-outlined">smart_toy</span><span class="text">ML Models</span></a>
+            <a href="{{ url_for('alerts.index') }}"><span class="icon material-symbols-outlined">notifications</span><span class="text">Alerts</span></a>
+        {% elif current_user and current_user.role == 'employee' %}
+            <a href="{{ url_for('employees.my_attrition_risk') }}"><span class="icon material-symbols-outlined">warning</span><span class="text">Attrition Risk</span></a>
+        {% endif %}
         <a href="{{ url_for('auth.logout') }}"><span class="icon material-symbols-outlined">logout</span><span class="text">Logout</span></a>
     </div>
 

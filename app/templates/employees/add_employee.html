@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Add New Employee</h2>
+    <form id="addEmployeeForm">
+        <div class="mb-3">
+            <label for="firstName" class="form-label">First Name</label>
+            <input type="text" class="form-control" id="firstName" name="first_name" required>
+        </div>
+        <div class="mb-3">
+            <label for="lastName" class="form-label">Last Name</label>
+            <input type="text" class="form-control" id="lastName" name="last_name" required>
+        </div>
+        <div class="mb-3">
+            <label for="email" class="form-label">Email</label>
+            <input type="email" class="form-control" id="email" name="email" required>
+        </div>
+        <div class="mb-3">
+            <label for="department" class="form-label">Department</label>
+            <input type="text" class="form-control" id="department" name="department" required>
+        </div>
+        <div class="mb-3">
+            <label for="position" class="form-label">Position</label>
+            <input type="text" class="form-control" id="position" name="position" required>
+        </div>
+        <div class="mb-3">
+            <label for="hireDate" class="form-label">Hire Date</label>
+            <input type="date" class="form-control" id="hireDate" name="hire_date" required>
+        </div>
+        <div class="mb-3">
+            <label for="salary" class="form-label">Salary</label>
+            <input type="number" class="form-control" id="salary" name="salary" required min="30000" max="200000">
+        </div>
+        <button type="submit" class="btn btn-primary">Add Employee</button>
+        <a href="{{ url_for('employees.list_employees') }}" class="btn btn-secondary">Cancel</a>
+    </form>
+    <div id="message" class="mt-3"></div>
+</div>
+
+<script>
+    document.getElementById('addEmployeeForm').addEventListener('submit', async function(event) {
+        event.preventDefault();
+
+        const form = event.target;
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+
+        const messageDiv = document.getElementById('message');
+        messageDiv.innerHTML = '';
+        messageDiv.className = 'mt-3';
+
+        try {
+            const response = await fetch('/employees/api/employees', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('access_token')}` // Assuming token is stored in localStorage
+                },
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                messageDiv.classList.add('alert', 'alert-success');
+                messageDiv.textContent = 'Employee added successfully!';
+                form.reset();
+                // Optionally redirect or update list
+                window.location.href = "{{ url_for('employees.list_employees') }}";
+            } else {
+                messageDiv.classList.add('alert', 'alert-danger');
+                messageDiv.textContent = result.error || 'Failed to add employee.';
+            }
+        } catch (error) {
+            messageDiv.classList.add('alert', 'alert-danger');
+            messageDiv.textContent = 'An error occurred: ' + error.message;
+        }
+    });
+</script>
+{% endblock %}

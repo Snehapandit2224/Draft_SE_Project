@@ -23,7 +23,7 @@
         const employeeId = {{ employee_id }};
         const riskFactorsList = document.getElementById('risk-factors-list');
 
-        fetch(`/ml/api/ml/risk-factors/${employeeId}`, { credentials: 'include' })
+        fetch(`/api/ml/predictions/${employeeId}`, { credentials: 'include' })
             .then(response => response.json())
             .then(data => {
                 if (data.error) {

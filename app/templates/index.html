@@ -4,193 +4,225 @@
 
 {% block content %}
 <div class="container">
-    <h1>Dashboard</h1>
-    <div class="row">
-        <div class="col-md-4">
-            <div class="card">
+    {% if is_employee %}
+        {% if employee %}
+            <h1>Welcome, {{ employee.first_name }} {{ employee.last_name }}!</h1>
+            <div class="card mt-4">
+                <div class="card-header">
+                    Your Employee Details
+                </div>
                 <div class="card-body">
-                    <h5 class="card-title">Overall Attrition Rate</h5>
-                    <p class="card-text" id="overall-attrition-rate">Loading...</p>
+                    <p><strong>Email:</strong> {{ employee.email }}</p>
+                    <p><strong>Department:</strong> {{ employee.department }}</p>
+                    <p><strong>Position:</strong> {{ employee.position }}</p>
+                    <p><strong>Hire Date:</strong> {{ employee.hire_date }}</p>
+                    <p><strong>Salary:</strong> ${{ "%.2f" | format(employee.salary) }}</p>
+                    <p><strong>Status:</strong> {{ employee.status }}</p>
+                </div>
+            </div>
+            <div class="card mt-4">
+                <div class="card-header">
+                    Your Attrition Risk
+                </div>
+                <div class="card-body">
+                    <p>Your current attrition probability is: <strong>Loading...</strong></p>
+                    <p>Factors influencing your risk: <strong>Loading...</strong></p>
+                    <small class="text-muted">This is a predictive model and does not guarantee future outcomes.</small>
+                </div>
+            </div>
+        {% else %}
+            <h1>Welcome!</h1>
+            <p>{{ message }}</p>
+        {% endif %}
+    {% else %}
+        <h1>Admin Dashboard</h1>
+        <div class="row">
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Overall Attrition Rate</h5>
+                        <p class="card-text" id="overall-attrition-rate">Loading...</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">New Hires</h5>
+                        <p class="card-text" id="new-hires">Loading...</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Terminations</h5>
+                        <p class="card-text" id="terminations">Loading...</p>
+                    </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">New Hires</h5>
-                    <p class="card-text" id="new-hires">Loading...</p>
-                </div>
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <h2>Attrition Hotspots</h2>
+                <canvas id="hotspotsChart"></canvas>
+            </div>
+            <div class="col-md-6">
+                <h2>Top Exit Reasons</h2>
+                <canvas id="exitReasonsChart"></canvas>
             </div>
         </div>
-        <div class="col-md-4">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">Terminations</h5>
-                    <p class="card-text" id="terminations">Loading...</p>
-                </div>
+        <div class="row mt-4">
+            <div class="col-md-12">
+                <h2>Recent Alerts</h2>
+                <ul class="list-group" id="recent-alerts">
+                </ul>
             </div>
         </div>
-    </div>
-    <div class="row mt-4">
-        <div class="col-md-6">
-            <h2>Attrition Hotspots</h2>
-            <canvas id="hotspotsChart"></canvas>
-        </div>
-        <div class="col-md-6">
-            <h2>Top Exit Reasons</h2>
-            <canvas id="exitReasonsChart"></canvas>
-        </div>
-    </div>
-    <div class="row mt-4">
-        <div class="col-md-12">
-            <h2>Recent Alerts</h2>
-            <ul class="list-group" id="recent-alerts">
-            </ul>
-        </div>
-    </div>
-</div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-chart-matrix@1.1.1"></script>
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        // Key metrics
-        fetch('/analytics/api/reports/attrition', { credentials: 'include' })
-            .then(response => response.json())
-            .then(data => {
-                // Get the most recent Overall attrition rate
-                const overallData = data.filter(item => item.group === 'Overall').sort((a, b) => new Date(a.period) - new Date(b.period));
-                const latestOverall = overallData.length > 0 ? overallData[overallData.length - 1] : null;
-                
-                if (latestOverall) {
-                    document.getElementById('overall-attrition-rate').textContent = `${latestOverall.attrition_rate.toFixed(2)}%`;
-                } else {
-                    // Fallback: average of all
-                    const overallAttritionRate = data.reduce((acc, item) => acc + item.attrition_rate, 0) / data.length;
-                    document.getElementById('overall-attrition-rate').textContent = `${overallAttritionRate.toFixed(2)}%`;
-                }
-            });
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-matrix@1.1.1"></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                // Key metrics
+                fetch('/analytics/api/reports/attrition', { credentials: 'include' })
+                    .then(response => response.json())
+                    .then(data => {
+                        // Get the most recent Overall attrition rate
+                        const overallData = data.filter(item => item.group === 'Overall').sort((a, b) => new Date(a.period) - new Date(b.period));
+                        const latestOverall = overallData.length > 0 ? overallData[overallData.length - 1] : null;
+                        
+                        if (latestOverall) {
+                            document.getElementById('overall-attrition-rate').textContent = `${latestOverall.attrition_rate.toFixed(2)}%`;
+                        } else {
+                            // Fallback: average of all
+                            const overallAttritionRate = data.reduce((acc, item) => acc + item.attrition_rate, 0) / data.length;
+                            document.getElementById('overall-attrition-rate').textContent = `${overallAttritionRate.toFixed(2)}%`;
+                        }
+                    });
 
-        fetch('/employees/api/employees?status=active', { credentials: 'include' })
-            .then(response => response.json())
-            .then(data => {
-                document.getElementById('new-hires').textContent = data.total;
-            });
+                fetch('/employees/api/employees?status=active', { credentials: 'include' })
+                    .then(response => response.json())
+                    .then(data => {
+                        document.getElementById('new-hires').textContent = data.total;
+                    });
 
-        fetch('/employees/api/employees?status=terminated', { credentials: 'include' })
-            .then(response => response.json())
-            .then(data => {
-                document.getElementById('terminations').textContent = data.total;
-            });
+                fetch('/employees/api/employees?status=terminated', { credentials: 'include' })
+                    .then(response => response.json())
+                    .then(data => {
+                        document.getElementById('terminations').textContent = data.total;
+                    });
 
-        // Attrition hotspots
-        const hotspotsCtx = document.getElementById('hotspotsChart').getContext('2d');
-        fetch('/analytics/api/analytics/hotspots', { credentials: 'include' })
-            .then(response => response.json())
-            .then(data => {
-                const groups = [...new Set(data.map(item => item.group))];
-                const periods = [...new Set(data.map(item => item.period))].sort();
+                // Attrition hotspots
+                const hotspotsCtx = document.getElementById('hotspotsChart').getContext('2d');
+                fetch('/analytics/api/analytics/hotspots', { credentials: 'include' })
+                    .then(response => response.json())
+                    .then(data => {
+                        const groups = [...new Set(data.map(item => item.group))];
+                        const periods = [...new Set(data.map(item => item.period))].sort();
 
-                const chartData = {
-                    datasets: [{
-                        label: 'Attrition Rate',
-                        data: data.map(item => ({
-                            x: item.period,
-                            y: item.group,
-                            v: item.attrition_rate
-                        })),
-                        backgroundColor(ctx) {
-                            const value = ctx.dataset.data[ctx.dataIndex].v;
-                            const alpha = (value - 15) / 30; // Scale color based on value
-                            return `rgba(255, 99, 132, ${alpha})`;
-                        },
-                        borderColor: 'grey',
-                        borderWidth: 1,
-                        width: ({chart}) => (chart.chartArea || {}).width / periods.length - 1,
-                        height: ({chart}) => (chart.chartArea || {}).height / groups.length - 1
-                    }]
-                };
+                        const chartData = {
+                            datasets: [{
+                                label: 'Attrition Rate',
+                                data: data.map(item => ({
+                                    x: item.period,
+                                    y: item.group,
+                                    v: item.attrition_rate
+                                })),
+                                backgroundColor(ctx) {
+                                    const value = ctx.dataset.data[ctx.dataIndex].v;
+                                    const alpha = (value - 15) / 30; // Scale color based on value
+                                    return `rgba(255, 99, 132, ${alpha})`;
+                                },
+                                borderColor: 'grey',
+                                borderWidth: 1,
+                                width: ({chart}) => (chart.chartArea || {}).width / periods.length - 1,
+                                height: ({chart}) => (chart.chartArea || {}).height / groups.length - 1
+                            }]
+                        };
 
-                new Chart(hotspotsCtx, {
-                    type: 'matrix',
-                    data: chartData,
-                    options: {
-                        scales: {
-                            x: {
-                                type: 'category',
-                                labels: periods,
-                                ticks: {
-                                    autoSkip: false
-                                }
-                            },
-                            y: {
-                                type: 'category',
-                                labels: groups,
-                                offset: true
-                            }
-                        },
-                        plugins: {
-                            legend: {
-                                display: false
-                            },
-                            tooltip: {
-                                callbacks: {
-                                    title: function() {
-                                        return '';
+                        new Chart(hotspotsCtx, {
+                            type: 'matrix',
+                            data: chartData,
+                            options: {
+                                scales: {
+                                    x: {
+                                        type: 'category',
+                                        labels: periods,
+                                        ticks: {
+                                            autoSkip: false
+                                        }
                                     },
-                                    label: function(context) {
-                                        const v = context.dataset.data[context.dataIndex];
-                                        return [v.y, v.x, `Attrition: ${v.v.toFixed(2)}%`];
+                                    y: {
+                                        type: 'category',
+                                        labels: groups,
+                                        offset: true
+                                    }
+                                },
+                                plugins: {
+                                    legend: {
+                                        display: false
+                                    },
+                                    tooltip: {
+                                        callbacks: {
+                                            title: function() {
+                                                return '';
+                                            },
+                                            label: function(context) {
+                                                const v = context.dataset.data[context.dataIndex];
+                                                return [v.y, v.x, `Attrition: ${v.v.toFixed(2)}%`];
+                                            }
+                                        }
                                     }
                                 }
                             }
-                        }
-                    }
-                });
-            });
+                        });
+                    });
 
-        // Top exit reasons
-        const exitReasonsCtx = document.getElementById('exitReasonsChart').getContext('2d');
-        fetch('/analytics/api/reports/exit-reasons', { credentials: 'include' })
-            .then(response => response.json())
-            .then(data => {
-                const labels = data.map(item => item.reason);
-                const counts = data.map(item => item.count);
+                // Top exit reasons
+                const exitReasonsCtx = document.getElementById('exitReasonsChart').getContext('2d');
+                fetch('/analytics/api/reports/exit-reasons', { credentials: 'include' })
+                    .then(response => response.json())
+                    .then(data => {
+                        const labels = data.map(item => item.reason);
+                        const counts = data.map(item => item.count);
 
-                new Chart(exitReasonsCtx, {
-                    type: 'bar',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            label: '# of Exits',
-                            data: counts,
-                            backgroundColor: 'rgba(54, 162, 235, 0.2)',
-                            borderColor: 'rgba(54, 162, 235, 1)',
-                            borderWidth: 1
-                        }]
-                    },
-                    options: {
-                        scales: {
-                            y: {
-                                beginAtZero: true
+                        new Chart(exitReasonsCtx, {
+                            type: 'bar',
+                            data: {
+                                labels: labels,
+                                datasets: [{
+                                    label: '# of Exits',
+                                    data: counts,
+                                    backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                                    borderColor: 'rgba(54, 162, 235, 1)',
+                                    borderWidth: 1
+                                }]
+                            },
+                            options: {
+                                scales: {
+                                    y: {
+                                        beginAtZero: true
+                                    }
+                                }
                             }
-                        }
-                    }
-                });
-            });
+                        });
+                    });
 
-        // Recent alerts
-        const recentAlertsList = document.getElementById('recent-alerts');
-        fetch('/alerts/api/alerts', { credentials: 'include' })
-            .then(response => response.json())
-            .then(data => {
-                data.slice(0, 5).forEach(item => {
-                    const listItem = document.createElement('li');
-                    listItem.className = 'list-group-item';
-                    listItem.textContent = `${item.alert_type}: ${item.group_name} - ${item.value.toFixed(2)}%`;
-                    recentAlertsList.appendChild(listItem);
-                });
+                // Recent alerts
+                const recentAlertsList = document.getElementById('recent-alerts');
+                fetch('/alerts/api/alerts', { credentials: 'include' })
+                    .then(response => response.json())
+                    .then(data => {
+                        data.slice(0, 5).forEach(item => {
+                            const listItem = document.createElement('li');
+                            listItem.className = 'list-group-item';
+                            listItem.textContent = `${item.alert_type}: ${item.group_name} - ${item.value.toFixed(2)}%`;
+                            recentAlertsList.appendChild(listItem);
+                        });
+                    });
             });
-    });
-</script>
+        </script>
+    {% endif %}
+</div>
 {% endblock %}

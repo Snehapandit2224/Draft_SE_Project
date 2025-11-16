@@ -2,8 +2,8 @@ from flask import request, jsonify
 from flask_jwt_extended import current_user
 from app.utils.decorators import conditional_jwt_required
 from . import employees
-from .. import db
-from ..models import Employee, EmployeeHistory
+from .. import db, bcrypt
+from ..models import Employee, EmployeeHistory, User
 from datetime import datetime
 
 from app.utils.decorators import validate_input
@@ -21,6 +21,10 @@ def create_employee(data):
     except ValueError:
         return jsonify({'error': 'Invalid date format for hire_date. Use YYYY-MM-DD.'}), 400
 
+    # Check if employee with this email already exists
+    if Employee.query.filter_by(email=data['email']).first():
+        return jsonify({'error': 'Employee with this email already exists.'}), 409
+
     employee = Employee(
         first_name=data['first_name'],
         last_name=data['last_name'],
@@ -31,6 +35,22 @@ def create_employee(data):
         salary=data['salary']
     )
     db.session.add(employee)
+    db.session.flush() # Flush to get employee.id before commit
+
+    # Create a corresponding user for the new employee
+    username = f"{data['first_name'].lower()}{data['last_name'].lower()}"
+    # Check if user with this username already exists
+    if User.query.filter_by(username=username).first():
+        # If username exists, append a number to make it unique
+        i = 1
+        while User.query.filter_by(username=f"{username}{i}").first():
+            i += 1
+        username = f"{username}{i}"
+
+    user = User(username=username, role='employee')
+    user.set_password(username) # Password is also the concatenated name
+    db.session.add(user)
+
     db.session.commit()
     return jsonify(employee.to_dict()), 201
 

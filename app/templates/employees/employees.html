@@ -5,6 +5,7 @@
 {% block content %}
 <div class="container">
     <h1>Employees</h1>
+    <a href="{{ url_for('employees.add_employee') }}" class="btn btn-success mb-3">Add Employee</a>
     <table class="table table-striped">
         <thead>
             <tr>

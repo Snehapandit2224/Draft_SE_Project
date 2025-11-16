@@ -39,6 +39,8 @@ def predict_attrition():
     if not employees:
         return jsonify({'message': 'No active employees to predict.'}), 200
 
+    print(f"--- predict_attrition: Processing {len(employees)} active employees. IDs: {[emp.id for emp in employees]} ---")
+
     # Create a DataFrame from the employee data
     employee_data = [{
         'id': emp.id,
@@ -121,97 +123,125 @@ def get_predictions():
 
     return jsonify(out), 200
 
-@ml_models.route('/api/ml/risk-factors/<int:emp_id>', methods=['GET'])
+@ml_models.route('/api/ml/predictions/<int:employee_id>', methods=['GET'])
 @conditional_jwt_required()
-def get_risk_factors(emp_id):
+def get_employee_prediction(employee_id):
+    print(f"--- get_employee_prediction called for employee_id: {employee_id} ---")
+    prediction = AttritionPrediction.query.filter_by(employee_id=employee_id).order_by(AttritionPrediction.prediction_date.desc()).first()
+    if not prediction:
+        print(f"No attrition prediction found for employee_id: {employee_id}")
+        return jsonify({'message': 'No attrition prediction found for this employee.'}), 404
+    
+    print(f"Found prediction for employee_id: {employee_id}, probability: {prediction.attrition_probability}")
+
+    # Also fetch risk factors if available
+    risk_factors_data = get_risk_factors_for_employee(employee_id) # Helper function to get risk factors
+    
+    response_data = {
+        'employee_id': prediction.employee_id,
+        'attrition_probability': float(prediction.attrition_probability) if prediction.attrition_probability is not None else None,
+        'prediction_date': prediction.prediction_date.isoformat() if prediction.prediction_date is not None else None,
+        'shap_values': prediction.shap_values # Assuming shap_values are stored here
+    }
+    if risk_factors_data:
+        response_data['risk_factors'] = risk_factors_data['risk_factors']
+
+    print(f"Returning response_data: {response_data}")
+    return jsonify(response_data), 200
+
+def get_risk_factors_for_employee(emp_id):
+    print(f"--- get_risk_factors_for_employee called for emp_id: {emp_id} ---")
     if not os.path.exists(MODEL_PATH) or not os.path.exists(TRANSFORMER_PATH):
-        return jsonify({'error': 'Model or transformer not found. Please train the model first.'}), 500
+        print(f"Model or transformer not found at {MODEL_PATH} or {TRANSFORMER_PATH}")
+        return None
 
     model = joblib.load(MODEL_PATH)
     transformer = joblib.load(TRANSFORMER_PATH)
 
     employee = db.session.get(Employee, emp_id)
     if not employee:
-        return jsonify({'error': 'Employee not found.'}), 404
+        print(f"Employee with ID {emp_id} not found.")
+        return None
 
-    employee_data = {
+    employee_data = [{
         'id': employee.id,
         'department': employee.department,
         'position': employee.position,
         'hire_date': employee.hire_date,
         'status': employee.status
-    }
-    df = pd.DataFrame([employee_data])
+    }]
+    df = pd.DataFrame(employee_data)
+    print(f"Original employee DataFrame:\n{df}")
+
     df_processed = preprocess_data(df.copy())
+    print(f"Processed employee DataFrame:\n{df_processed}")
 
     categorical_features = ['department', 'position', 'status']
     numerical_features = ['tenure_years']
 
     try:
         X = df_processed[categorical_features + numerical_features]
+        print(f"Feature matrix X:\n{X}")
     except Exception as e:
-        return jsonify({'error': f'Missing required features for risk factors: {str(e)}'}), 500
+        print(f"Error building feature matrix: {e}")
+        return None
 
     try:
         transformed_data = transformer.transform(X)
+        print(f"Transformed data shape: {transformed_data.shape}")
     except Exception as e:
-        return jsonify({'error': f'Error during data transformation for risk factors: {str(e)}'}), 500
+        print(f"Error during data transformation: {e}")
+        return None
 
-    # Get feature names after one-hot encoding
-    # Build feature names in the same order the transformer produces them
     try:
         cat_feature_names = transformer.named_transformers_['cat'].get_feature_names_out(categorical_features).tolist()
     except Exception:
-        # fallback for older sklearn versions / unexpected transformer shapes
         cat_feature_names = []
+    
+    feature_names = cat_feature_names + numerical_features
+    print(f"Feature names: {feature_names}")
 
-    feature_names = cat_feature_names + ['tenure_years']  # numerical feature appended after categorical encodings
-
-    # Create a SHAP explainer
     try:
         import shap
         HAS_SHAP = True
-    except Exception:
-        # SHAP (and transitively torch) may not be available in all environments
+    except ImportError:
         shap = None
         HAS_SHAP = False
+        print("SHAP library not found. Falling back to feature importances.")
 
-    # If SHAP is available, use SHAP-based explanations
     if HAS_SHAP:
         try:
             explainer = shap.TreeExplainer(model)
             shap_values = explainer.shap_values(transformed_data)
 
-            # For binary classification, shap_values will be a list of two arrays.
-            # We are interested in the SHAP values for the positive class (attrition).
             if isinstance(shap_values, list):
-                shap_values = shap_values[1] # Assuming index 1 is the positive class
+                shap_values = shap_values[1]
 
-            # Map SHAP values to feature names
             feature_shap_values = dict(zip(feature_names, shap_values[0]))
-
-            # Sort by absolute SHAP value to get top risk factors
             sorted_risk_factors = sorted(feature_shap_values.items(), key=lambda item: abs(item[1]), reverse=True)
-
-            # Return top N risk factors (e.g., top 5)
             top_risk_factors = sorted_risk_factors[:5]
-        except Exception:
-            # SHAP computation may fail; fall back to feature importances
+            print(f"Top SHAP risk factors: {top_risk_factors}")
+            return {'risk_factors': top_risk_factors}
+        except Exception as e:
+            print(f"Error calculating SHAP values: {e}")
             HAS_SHAP = False
 
-    # Fallback: use feature importances from the model if SHAP is unavailable or failed
     if not HAS_SHAP:
         try:
-            # For tree-based models, get feature importances
-            importances = model.feature_importances_
-            feature_importances = dict(zip(feature_names, importances))
-            sorted_risk_factors = sorted(feature_importances.items(), key=lambda item: abs(item[1]), reverse=True)
-            top_risk_factors = sorted_risk_factors[:5]
-        except Exception:
-            # If feature importances also fail, return a helpful error
-            return jsonify({'error': 'Unable to compute risk factors. The model may not support explanations.', 'warning': 'SHAP not available; tried fallback feature importances.'}), 501
-
-    return jsonify({'employee_id': emp_id, 'risk_factors': top_risk_factors}), 200
+            if hasattr(model, 'feature_importances_'):
+                importances = model.feature_importances_
+                feature_importances = dict(zip(feature_names, importances))
+                sorted_risk_factors = sorted(feature_importances.items(), key=lambda item: abs(item[1]), reverse=True)
+                top_risk_factors = sorted_risk_factors[:5]
+                print(f"Top feature importances risk factors: {top_risk_factors}")
+                return {'risk_factors': top_risk_factors}
+            else:
+                print("Model does not have 'feature_importances_' attribute.")
+                return None
+        except Exception as e:
+            print(f"Error calculating feature importances: {e}")
+            return None
+    return None
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from flask import current_app
