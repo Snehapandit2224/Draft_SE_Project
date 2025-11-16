@@ -16,13 +16,14 @@ MODEL_PATH = os.path.join(MODEL_DIR, 'attrition_model.pkl')
 TRANSFORMER_PATH = os.path.join(MODEL_DIR, 'transformer.pkl')
 
 def preprocess_data(df):
-    # Calculate tenure
-    df['hire_date'] = pd.to_datetime(df['hire_date'])
-    df['tenure_days'] = (datetime.now(timezone.utc) - df['hire_date'].dt.tz_localize('UTC')).dt.days
+    # Calculate tenure (ensure UTC-aware datetimes)
+    df['hire_date'] = pd.to_datetime(df['hire_date'], utc=True)
+    df['hire_date'] = df['hire_date'].fillna(pd.Timestamp('1970-01-01', tz='UTC'))
+    df['tenure_days'] = (pd.Timestamp.now(tz=timezone.utc) - df['hire_date']).dt.days
     df['tenure_years'] = df['tenure_days'] / 365.25
 
-    # Drop unnecessary columns
-    df = df.drop(columns=['hire_date', 'tenure_days'])
+    # Drop unnecessary columns but keep numerical features used by the model
+    df = df.drop(columns=['hire_date', 'tenure_days'], errors='ignore')
 
     return df
 
@@ -59,7 +60,14 @@ def retrain_model():
     y = df_processed['attrition']
 
     # Split data into training and testing sets
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+    try:
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=0.2, random_state=42, stratify=y)
+    except ValueError:
+        # If stratify fails due to too few samples in a class, fall back
+        # to a simple split without stratification to allow small datasets.
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=0.2, random_state=42)
 
     # Define categorical and numerical features
     categorical_features = ['department', 'position', 'status']

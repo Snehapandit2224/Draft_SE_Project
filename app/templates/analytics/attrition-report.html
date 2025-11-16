@@ -60,11 +60,12 @@
         }
 
         function fetchData(groupBy) {
-            fetch(`/analytics/api/reports/attrition?group_by=${groupBy}`)
+            fetch(`/analytics/api/reports/attrition?group_by=${groupBy}`, { credentials: 'include' })
                 .then(response => response.json())
                 .then(data => {
                     updateTable(data);
-                });
+                })
+                .catch(err => console.error('Error fetching attrition data:', err));
         }
 
         groupBySelect.addEventListener('change', function () {

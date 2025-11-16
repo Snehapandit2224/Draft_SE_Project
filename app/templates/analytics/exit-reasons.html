@@ -70,11 +70,12 @@
         }
 
         function fetchData(url) {
-            fetch(url)
+            fetch(url, { credentials: 'include' })
                 .then(response => response.json())
                 .then(data => {
                     updateChart(data);
-                });
+                })
+                .catch(err => console.error('Error fetching data:', err));
         }
 
         const observer = new IntersectionObserver((entries) => {

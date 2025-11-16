@@ -39,11 +39,12 @@
         }
 
         function fetchData() {
-            fetch('/ml/api/predictions')
+            fetch('/ml/api/predictions', { credentials: 'include' })
                 .then(response => response.json())
                 .then(data => {
                     updateTable(data);
-                });
+                })
+                .catch(err => console.error('Error fetching predictions:', err));
         }
 
         fetchData();

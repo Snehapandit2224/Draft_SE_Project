@@ -23,11 +23,11 @@
         const employeeId = {{ employee_id }};
         const riskFactorsList = document.getElementById('risk-factors-list');
 
-        fetch(`/ml/api/ml/risk-factors/${employeeId}`)
+        fetch(`/ml/api/ml/risk-factors/${employeeId}`, { credentials: 'include' })
             .then(response => response.json())
             .then(data => {
                 if (data.error) {
-                    riskFactorsList.innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+                    riskFactorsList.innerHTML = `<div class="alert alert-warning">${data.error}${data.warning ? '<br><small>' + data.warning + '</small>' : ''}</div>`;
                     return;
                 }
                 if (data.risk_factors && data.risk_factors.length > 0) {

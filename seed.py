@@ -24,6 +24,13 @@ def create_sample_employees():
             position = random.choice(['Manager', 'Developer', 'Analyst', 'Intern'])
             hire_date = datetime.now().date() - timedelta(days=random.randint(30, 3650))
             salary = random.randint(50000, 150000)
+            # make at least one sample employee inactive so training has positive examples
+            is_active = True
+            status = 'active'
+            if i == len(names) - 1:
+                is_active = False
+                status = 'terminated'
+
             employee = Employee(
                 first_name=first_name,
                 last_name=last_name,
@@ -31,7 +38,9 @@ def create_sample_employees():
                 department=department,
                 position=position,
                 hire_date=hire_date,
-                salary=salary
+                salary=salary,
+                is_active=is_active,
+                status=status
             )
             db.session.add(employee)
         db.session.commit()
