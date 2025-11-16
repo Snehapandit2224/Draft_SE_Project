@@ -55,20 +55,29 @@
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         // Key metrics
-        fetch('/analytics/api/reports/attrition')
+        fetch('/analytics/api/reports/attrition', { credentials: 'include' })
             .then(response => response.json())
             .then(data => {
-                const overallAttritionRate = data.reduce((acc, item) => acc + item.attrition_rate, 0) / data.length;
-                document.getElementById('overall-attrition-rate').textContent = `${overallAttritionRate.toFixed(2)}%`;
+                // Get the most recent Overall attrition rate
+                const overallData = data.filter(item => item.group === 'Overall').sort((a, b) => new Date(a.period) - new Date(b.period));
+                const latestOverall = overallData.length > 0 ? overallData[overallData.length - 1] : null;
+                
+                if (latestOverall) {
+                    document.getElementById('overall-attrition-rate').textContent = `${latestOverall.attrition_rate.toFixed(2)}%`;
+                } else {
+                    // Fallback: average of all
+                    const overallAttritionRate = data.reduce((acc, item) => acc + item.attrition_rate, 0) / data.length;
+                    document.getElementById('overall-attrition-rate').textContent = `${overallAttritionRate.toFixed(2)}%`;
+                }
             });
 
-        fetch('/employees/api/employees?status=active')
+        fetch('/employees/api/employees?status=active', { credentials: 'include' })
             .then(response => response.json())
             .then(data => {
                 document.getElementById('new-hires').textContent = data.total;
             });
 
-        fetch('/employees/api/employees?status=terminated')
+        fetch('/employees/api/employees?status=terminated', { credentials: 'include' })
             .then(response => response.json())
             .then(data => {
                 document.getElementById('terminations').textContent = data.total;
@@ -76,7 +85,7 @@
 
         // Attrition hotspots
         const hotspotsCtx = document.getElementById('hotspotsChart').getContext('2d');
-        fetch('/analytics/api/analytics/hotspots')
+        fetch('/analytics/api/analytics/hotspots', { credentials: 'include' })
             .then(response => response.json())
             .then(data => {
                 const groups = [...new Set(data.map(item => item.group))];
@@ -142,7 +151,7 @@
 
         // Top exit reasons
         const exitReasonsCtx = document.getElementById('exitReasonsChart').getContext('2d');
-        fetch('/analytics/api/reports/exit-reasons')
+        fetch('/analytics/api/reports/exit-reasons', { credentials: 'include' })
             .then(response => response.json())
             .then(data => {
                 const labels = data.map(item => item.reason);
@@ -172,7 +181,7 @@
 
         // Recent alerts
         const recentAlertsList = document.getElementById('recent-alerts');
-        fetch('/alerts/api/alerts')
+        fetch('/alerts/api/alerts', { credentials: 'include' })
             .then(response => response.json())
             .then(data => {
                 data.slice(0, 5).forEach(item => {

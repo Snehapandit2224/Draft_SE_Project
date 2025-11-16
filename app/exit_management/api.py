@@ -32,6 +32,12 @@ def create_exit_feedback(data):
         feedback=data['feedback']
     )
     db.session.add(feedback)
+    
+    # Mark employee as terminated/inactive when exit feedback is submitted
+    employee.is_active = False
+    employee.status = 'terminated'
+    db.session.add(employee)
+    
     db.session.commit()
     return jsonify(feedback.to_dict()), 201
 

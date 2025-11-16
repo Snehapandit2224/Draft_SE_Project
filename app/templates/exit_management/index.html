@@ -16,7 +16,8 @@
             <form id="exit-feedback-form">
                 <div class="mb-3">
                     <label for="employee_id" class="form-label">Employee</label>
-                    <select class="form-select" id="employee_id" name="employee_id" required>
+                    <select class="form-select" id="employee_id" name="employee_id" required style="min-width: 100%; height: auto; max-height: 400px;">
+                        <option value="">-- Select an employee --</option>
                     </select>
                 </div>
                 <div class="mb-3">
@@ -48,33 +49,51 @@
         const exitFeedbackForm = document.getElementById('exit-feedback-form');
 
         function fetchPendingInterviews() {
-            fetch('/exit/api/exit-feedback/pending')
+            fetch('/exit/api/exit-feedback/pending', { credentials: 'include' })
                 .then(response => response.json())
                 .then(data => {
                     pendingInterviewsList.innerHTML = '';
-                    data.forEach(item => {
+                    if (data && data.length > 0) {
+                        data.forEach(item => {
+                            const listItem = document.createElement('li');
+                            listItem.className = 'list-group-item d-flex justify-content-between align-items-center';
+                            listItem.innerHTML = `
+                                <span>${item.employee.first_name} ${item.employee.last_name} - ${item.reason}</span>
+                                <button class="btn btn-sm btn-success" data-id="${item.id}">Complete</button>
+                            `;
+                            pendingInterviewsList.appendChild(listItem);
+                        });
+                    } else {
                         const listItem = document.createElement('li');
-                        listItem.className = 'list-group-item d-flex justify-content-between align-items-center';
-                        listItem.innerHTML = `
-                            <span>${item.employee.first_name} ${item.employee.last_name}</span>
-                            <button class="btn btn-sm btn-success" data-id="${item.id}">Complete</button>
-                        `;
+                        listItem.className = 'list-group-item text-muted';
+                        listItem.textContent = 'No pending interviews';
                         pendingInterviewsList.appendChild(listItem);
-                    });
-                });
+                    }
+                })
+                .catch(err => console.error('Error fetching pending interviews:', err));
         }
 
         function fetchEmployees() {
-            fetch('/employees/api/employees')
+            fetch('/employees/api/employees?status=active&per_page=100', { credentials: 'include' })
                 .then(response => response.json())
                 .then(data => {
-                    data.employees.forEach(employee => {
+                    // Clear existing options except the placeholder
+                    employeeSelect.innerHTML = '<option value="">-- Select an employee --</option>';
+                    if (data.employees && data.employees.length > 0) {
+                        data.employees.forEach(employee => {
+                            const option = document.createElement('option');
+                            option.value = employee.id;
+                            option.textContent = `${employee.first_name} ${employee.last_name} (${employee.department})`;
+                            employeeSelect.appendChild(option);
+                        });
+                    } else {
                         const option = document.createElement('option');
-                        option.value = employee.id;
-                        option.textContent = `${employee.first_name} ${employee.last_name}`;
+                        option.textContent = 'No active employees';
+                        option.disabled = true;
                         employeeSelect.appendChild(option);
-                    });
-                });
+                    }
+                })
+                .catch(err => console.error('Error fetching employees:', err));
         }
 
         exitFeedbackForm.addEventListener('submit', function (e) {
@@ -86,10 +105,21 @@
                 headers: {
                     'Content-Type': 'application/json'
                 },
+                credentials: 'include',
                 body: JSON.stringify(data)
-            }).then(() => {
-                exitFeedbackForm.reset();
-                fetchPendingInterviews();
+            }).then(response => {
+                if (response.ok) {
+                    alert('Exit feedback submitted successfully!');
+                    exitFeedbackForm.reset();
+                    fetchPendingInterviews();
+                    fetchEmployees();
+                } else {
+                    alert('Error submitting exit feedback');
+                }
+            })
+            .catch(err => {
+                console.error('Error:', err);
+                alert('Error submitting exit feedback');
             });
         });
 
